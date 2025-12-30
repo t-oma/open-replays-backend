@@ -11,7 +11,8 @@ import (
 type Querier interface {
 	CreateVideo(ctx context.Context, arg CreateVideoParams) (Video, error)
 	DeleteVideo(ctx context.Context, title string) error
-	GetVideosByTitle(ctx context.Context, title string) ([]Video, error)
+	GetVideo(ctx context.Context, filename string) (Video, error)
+	ListVideos(ctx context.Context) ([]Video, error)
 }
 
 var _ Querier = (*Queries)(nil)

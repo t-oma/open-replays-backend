@@ -11,16 +11,17 @@ import (
 )
 
 const createVideo = `-- name: CreateVideo :one
-INSERT INTO videos (title, description, filename, uploaded_at) 
-VALUES (?, ?, ?, ?) 
-RETURNING filename, title, description, uploaded_at
+INSERT INTO videos (title, description, filename, extension, uploaded_at) 
+VALUES (?, ?, ?, ?, ?) 
+RETURNING filename, extension, title, description, uploaded_at
 `
 
 type CreateVideoParams struct {
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	Filename    string    `json:"filename"`
-	UploadedAt  time.Time `json:"uploaded_at"`
+	Title       string
+	Description string
+	Filename    string
+	Extension   string
+	UploadedAt  time.Time
 }
 
 func (q *Queries) CreateVideo(ctx context.Context, arg CreateVideoParams) (Video, error) {
@@ -28,11 +29,13 @@ func (q *Queries) CreateVideo(ctx context.Context, arg CreateVideoParams) (Video
 		arg.Title,
 		arg.Description,
 		arg.Filename,
+		arg.Extension,
 		arg.UploadedAt,
 	)
 	var i Video
 	err := row.Scan(
 		&i.Filename,
+		&i.Extension,
 		&i.Title,
 		&i.Description,
 		&i.UploadedAt,
@@ -50,13 +53,30 @@ func (q *Queries) DeleteVideo(ctx context.Context, title string) error {
 	return err
 }
 
-const getVideosByTitle = `-- name: GetVideosByTitle :many
-SELECT filename, title, description, uploaded_at FROM videos 
-WHERE title LIKE ?
+const getVideo = `-- name: GetVideo :one
+SELECT filename, extension, title, description, uploaded_at FROM videos 
+WHERE filename = ?
 `
 
-func (q *Queries) GetVideosByTitle(ctx context.Context, title string) ([]Video, error) {
-	rows, err := q.db.QueryContext(ctx, getVideosByTitle, title)
+func (q *Queries) GetVideo(ctx context.Context, filename string) (Video, error) {
+	row := q.db.QueryRowContext(ctx, getVideo, filename)
+	var i Video
+	err := row.Scan(
+		&i.Filename,
+		&i.Extension,
+		&i.Title,
+		&i.Description,
+		&i.UploadedAt,
+	)
+	return i, err
+}
+
+const listVideos = `-- name: ListVideos :many
+SELECT filename, extension, title, description, uploaded_at FROM videos
+`
+
+func (q *Queries) ListVideos(ctx context.Context) ([]Video, error) {
+	rows, err := q.db.QueryContext(ctx, listVideos)
 	if err != nil {
 		return nil, err
 	}
@@ -66,6 +86,7 @@ func (q *Queries) GetVideosByTitle(ctx context.Context, title string) ([]Video, 
 		var i Video
 		if err := rows.Scan(
 			&i.Filename,
+			&i.Extension,
 			&i.Title,
 			&i.Description,
 			&i.UploadedAt,
