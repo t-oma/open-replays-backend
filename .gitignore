@@ -1,0 +1,9 @@
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+
+uploads/videos/*
+!uploads/videos/.gitkeep
+
+uploads/thumbnails/*
+!uploads/thumbnails/.gitkeep
