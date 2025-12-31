@@ -7,3 +7,7 @@ uploads/videos/*
 
 uploads/thumbnails/*
 !uploads/thumbnails/.gitkeep
+
+.idea
+.vscode
+.DS_Store
