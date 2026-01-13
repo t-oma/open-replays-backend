@@ -13,6 +13,7 @@ type GetByFilenameParams struct {
 // UploadParams is a params for uploading a video.
 type UploadParams struct {
 	File        *multipart.FileHeader
+	Thumbnail   *multipart.FileHeader
 	Title       string
 	Description string
 }

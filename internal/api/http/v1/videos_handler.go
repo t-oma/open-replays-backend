@@ -30,9 +30,18 @@ func (h *VideosHandler) List(c *gin.Context) {
 		return
 	}
 
+	response := make([]VideoResponse, len(videos))
+	for i, video := range videos {
+		response[i] = VideoResponse{
+			Video:        video,
+			Thumbnail:    "/thumbnails/" + video.Filename + ".jpg",
+			FullFilename: video.Filename + video.Extension,
+		}
+	}
+
 	c.JSON(200, APIResponse{
 		Success: true,
-		Data:    gin.H{"videos": videos},
+		Data:    gin.H{"videos": response},
 	})
 }
 
@@ -81,6 +90,7 @@ func (h *VideosHandler) Upload(c *gin.Context) {
 		File:        req.Video,
 		Title:       req.Title,
 		Description: req.Description,
+		Thumbnail:   req.Thumbnail,
 	}
 	video, err := h.service.Upload(c.Request.Context(), uploadParams)
 	if err != nil {

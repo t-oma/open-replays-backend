@@ -37,9 +37,12 @@ func Run() error {
 	r := gin.Default()
 	r.Use(cors.Default())
 
-	storage := storage.NewLocalStorage("uploads/videos")
+	videosStorage := storage.NewLocalStorage("uploads/videos")
+	thumbnailsStorage := storage.NewLocalStorage("uploads/thumbnails")
 	videosRepo := repodb.NewVideosRepo(db)
-	videosUC := usecase.NewVideosService(videosRepo, storage)
+	thumbnailsService := usecase.NewFFmpegThumbnailService()
+	videoProcessor := usecase.NewVideoProcessor(thumbnailsService, videosStorage, thumbnailsStorage, 2)
+	videosUC := usecase.NewVideosService(videosRepo, videosStorage, thumbnailsStorage, videoProcessor)
 
 	router.Register(r, videosUC)
 

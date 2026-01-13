@@ -2,6 +2,7 @@ package domain
 
 import "time"
 
+// Video is a video domain model.
 type Video struct {
 	Filename    string    `json:"filename"`
 	Extension   string    `json:"extension"`

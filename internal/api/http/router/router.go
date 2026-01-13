@@ -15,4 +15,6 @@ func Register(r *gin.Engine, todos *usecase.VideosService) {
 	v1g.POST("/videos/upload", h.Upload)
 	v1g.DELETE("/videos/:filename", h.Delete)
 	v1g.GET("/videos/:filename/watch", h.Watch)
+
+	r.Static("/thumbnails", "./uploads/thumbnails")
 }

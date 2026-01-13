@@ -9,14 +9,17 @@ import (
 	"path/filepath"
 )
 
+// LocalStorage is a storage for files on local disk.
 type LocalStorage struct {
 	uploadDir string
 }
 
+// NewLocalStorage creates a new LocalStorage.
 func NewLocalStorage(uploadDir string) *LocalStorage {
 	return &LocalStorage{uploadDir: uploadDir}
 }
 
+// Save saves a file to local disk.
 func (s *LocalStorage) Save(ctx context.Context, fileHeader *multipart.FileHeader, filename string) error {
 	src, err := fileHeader.Open()
 	if err != nil {
@@ -44,11 +47,13 @@ func (s *LocalStorage) Save(ctx context.Context, fileHeader *multipart.FileHeade
 	return nil
 }
 
+// Delete deletes a file from local disk.
 func (s *LocalStorage) Delete(ctx context.Context, filename string) error {
 	path := filepath.Join(s.uploadDir, filename)
 	return os.Remove(path)
 }
 
+// GetPath returns the path to a file on local disk.
 func (s *LocalStorage) GetPath(filename string) string {
 	return filepath.Join(s.uploadDir, filename)
 }

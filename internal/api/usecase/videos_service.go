@@ -3,8 +3,8 @@ package usecase
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
+	"sort"
 	"time"
 
 	"open-replays/api/internal/api/domain"
@@ -17,6 +17,7 @@ const (
 	MaxFileSize = 100 * MEGABYTE
 )
 
+// AllowedExtensions is a map of all allowed extensions.
 var AllowedExtensions = map[string]bool{
 	".mp4":  true,
 	".webm": true,
@@ -25,21 +26,39 @@ var AllowedExtensions = map[string]bool{
 
 // VideosService is a service for videos.
 type VideosService struct {
-	repo    interfaces.VideosRepository
-	storage StorageService
+	repo             interfaces.VideosRepository
+	videoStorage     interfaces.StorageService
+	thumbnailStorage interfaces.StorageService
+	processor        *VideoProcessor
 }
 
 // NewVideosService creates a new VideosService.
-func NewVideosService(repo interfaces.VideosRepository, storage StorageService) *VideosService {
+func NewVideosService(
+	repo interfaces.VideosRepository,
+	videoStorage interfaces.StorageService,
+	thumbnailStorage interfaces.StorageService,
+	processor *VideoProcessor,
+) *VideosService {
 	return &VideosService{
-		repo:    repo,
-		storage: storage,
+		repo:             repo,
+		videoStorage:     videoStorage,
+		thumbnailStorage: thumbnailStorage,
+		processor:        processor,
 	}
 }
 
 // List lists all videos.
 func (s *VideosService) List(ctx context.Context) ([]domain.Video, error) {
-	return s.repo.List(ctx)
+	videos, err := s.repo.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Slice(videos, func(i, j int) bool {
+		return videos[i].UploadedAt.After(videos[j].UploadedAt)
+	})
+
+	return videos, nil
 }
 
 // GetByFilename gets a video by filename.
@@ -71,7 +90,7 @@ func (s *VideosService) Upload(ctx context.Context, params UploadParams) (domain
 	uniqueFilename := fmt.Sprintf("%s-%d", baseFilename, uploadTime.Unix())
 
 	// 5. Save file via storage service
-	if err := s.storage.Save(ctx, params.File, uniqueFilename+ext); err != nil {
+	if err := s.videoStorage.Save(ctx, params.File, uniqueFilename+ext); err != nil {
 		return domain.Video{}, fmt.Errorf("failed to save file: %w", err)
 	}
 
@@ -88,8 +107,25 @@ func (s *VideosService) Upload(ctx context.Context, params UploadParams) (domain
 	savedVideo, err := s.repo.Create(ctx, video)
 	if err != nil {
 		// Rollback: delete file if failed to save video metadata
-		_ = s.storage.Delete(ctx, uniqueFilename+ext)
+		_ = s.videoStorage.Delete(ctx, uniqueFilename+ext)
+		// _ = s.thumbnailStorage.Delete(ctx, thumbnailFilename)
 		return domain.Video{}, fmt.Errorf("failed to save video metadata: %w", err)
+	}
+
+	// 8. Generate thumbnail
+	thumbnailFilename := uniqueFilename + ".jpg"
+	if params.Thumbnail.Filename == "" && params.Thumbnail.Size == 0 {
+		s.processor.Enqueue(ProcessingJob{
+			VideoFilename: savedVideo.Filename,
+			VideoExt:      ext,
+		})
+	} else {
+		if err := s.thumbnailStorage.Save(ctx, params.Thumbnail, thumbnailFilename); err != nil {
+			// Rollback: delete video metadata and file if failed to save thumbnail
+			_ = s.videoStorage.Delete(ctx, uniqueFilename+ext)
+			_ = s.repo.Delete(ctx, savedVideo.Filename)
+			return domain.Video{}, fmt.Errorf("failed to save thumbnail: %w", err)
+		}
 	}
 
 	return savedVideo, nil
@@ -97,9 +133,7 @@ func (s *VideosService) Upload(ctx context.Context, params UploadParams) (domain
 
 // Delete deletes a video.
 func (s *VideosService) Delete(ctx context.Context, params DeleteParams) error {
-	filepath := filepath.Join("uploads/videos", params.Filename)
-
-	err := os.Remove(filepath)
+	err := s.videoStorage.Delete(ctx, params.Filename)
 	if err != nil {
 		return err
 	}
@@ -119,7 +153,7 @@ func (s *VideosService) Watch(ctx context.Context, params WatchParams) (string, 
 		return "", err
 	}
 
-	files, _ := filepath.Glob("uploads/videos/" + video.Filename + "." + video.Extension)
+	files, _ := filepath.Glob(s.videoStorage.GetPath(video.Filename + "." + video.Extension))
 	if len(files) == 0 {
 		return "", domain.ErrFileNotFound
 	}
