@@ -10,8 +10,8 @@ import (
 
 type Querier interface {
 	CreateVideo(ctx context.Context, arg CreateVideoParams) (Video, error)
-	DeleteVideo(ctx context.Context, title string) error
-	GetVideo(ctx context.Context, filename string) (Video, error)
+	DeleteVideo(ctx context.Context, id string) error
+	GetVideo(ctx context.Context, id string) (Video, error)
 	ListVideos(ctx context.Context) ([]Video, error)
 }
 

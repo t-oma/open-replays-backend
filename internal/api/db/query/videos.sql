@@ -3,13 +3,13 @@ SELECT * FROM videos;
 
 -- name: GetVideo :one
 SELECT * FROM videos 
-WHERE filename = ?;
+WHERE id = ?;
 
 -- name: CreateVideo :one
-INSERT INTO videos (title, description, filename, extension, uploaded_at) 
-VALUES (?, ?, ?, ?, ?) 
+INSERT INTO videos (id, title, description, filename, extension, duration, thumbnail, uploaded_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?) 
 RETURNING *;
 
 -- name: DeleteVideo :exec
-DELETE FROM videos 
-WHERE title = ?;
+DELETE FROM videos
+WHERE id = ?;

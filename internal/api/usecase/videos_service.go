@@ -7,13 +7,16 @@ import (
 	"sort"
 	"time"
 
+	gonanoid "github.com/matoous/go-nanoid/v2"
 	"open-replays/api/internal/api/domain"
 	"open-replays/api/internal/api/repository/interfaces"
 	"open-replays/api/internal/api/stringutil"
 )
 
 const (
-	MEGABYTE    = 1024 * 1024
+	// MEGABYTE represents one megabyte in bytes.
+	MEGABYTE = 1024 * 1024
+	// MaxFileSize represents the maximum allowed file size.
 	MaxFileSize = 100 * MEGABYTE
 )
 
@@ -61,9 +64,9 @@ func (s *VideosService) List(ctx context.Context) ([]domain.Video, error) {
 	return videos, nil
 }
 
-// GetByFilename gets a video by filename.
-func (s *VideosService) GetByFilename(ctx context.Context, params GetByFilenameParams) (domain.Video, error) {
-	return s.repo.GetByFilename(ctx, params.Filename)
+// GetByID gets a video by ID.
+func (s *VideosService) GetByID(ctx context.Context, params GetByIDParams) (domain.Video, error) {
+	return s.repo.GetByID(ctx, params.ID)
 }
 
 // Upload uploads a video.
@@ -94,12 +97,19 @@ func (s *VideosService) Upload(ctx context.Context, params UploadParams) (domain
 		return domain.Video{}, fmt.Errorf("failed to save file: %w", err)
 	}
 
+	id, err := gonanoid.New()
+	if err != nil {
+		return domain.Video{}, fmt.Errorf("failed to generate id: %w", err)
+	}
+
 	// 6. Create domain model
 	video := domain.Video{
+		ID:          id,
 		Title:       params.Title,
 		Description: params.Description,
 		Filename:    uniqueFilename,
 		Extension:   ext[1:],
+		Duration:    60,
 		UploadedAt:  uploadTime,
 	}
 
@@ -114,7 +124,7 @@ func (s *VideosService) Upload(ctx context.Context, params UploadParams) (domain
 
 	// 8. Generate thumbnail
 	thumbnailFilename := uniqueFilename + ".jpg"
-	if params.Thumbnail.Filename == "" && params.Thumbnail.Size == 0 {
+	if params.Thumbnail == nil || params.Thumbnail.Filename == "" && params.Thumbnail.Size == 0 {
 		s.processor.Enqueue(ProcessingJob{
 			VideoFilename: savedVideo.Filename,
 			VideoExt:      ext,
@@ -133,22 +143,21 @@ func (s *VideosService) Upload(ctx context.Context, params UploadParams) (domain
 
 // Delete deletes a video.
 func (s *VideosService) Delete(ctx context.Context, params DeleteParams) error {
-	err := s.videoStorage.Delete(ctx, params.Filename)
+	err := s.videoStorage.Delete(ctx, params.ID)
 	if err != nil {
 		return err
 	}
 
-	return s.repo.Delete(ctx, params.Filename)
+	return s.repo.Delete(ctx, params.ID)
 }
 
 // Watch watch a video
 func (s *VideosService) Watch(ctx context.Context, params WatchParams) (string, error) {
-	if params.Filename == "" {
-		return "", domain.ErrFileNotFound
+	if params.ID == "" {
+		return "", domain.ErrVideoNotFound
 	}
 
-	getByFilenameParams := GetByFilenameParams{Filename: params.Filename}
-	video, err := s.GetByFilename(ctx, getByFilenameParams)
+	video, err := s.GetByID(ctx, GetByIDParams(params))
 	if err != nil {
 		return "", err
 	}

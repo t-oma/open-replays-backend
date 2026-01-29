@@ -2,8 +2,6 @@ package v1
 
 import (
 	"mime/multipart"
-
-	"open-replays/api/internal/api/domain"
 )
 
 type APIResponse struct {
@@ -14,16 +12,10 @@ type APIResponse struct {
 	Code    int    `json:"code,omitempty"`
 }
 
-type VideoResponse struct {
-	domain.Video
-	FullFilename string `json:"fullFilename"`
-	Thumbnail    string `json:"thumbnail"`
-}
-
 type ListVideosRequest struct{}
 
 type GetVideoRequest struct {
-	Filename string `uri:"filename"`
+	ID string `uri:"id"`
 }
 
 type UploadVideoRequest struct {
@@ -34,9 +26,50 @@ type UploadVideoRequest struct {
 }
 
 type DeleteVideoRequest struct {
-	Filename string `uri:"filename"`
+	ID string `uri:"id"`
 }
 
 type WatchVideoRequest struct {
-	Filename string `uri:"filename"`
+	ID string `uri:"id"`
+}
+
+type VideoSummaryDTO struct {
+	ID           string `json:"id"`
+	Title        string `json:"title"`
+	ThumbnailURL string `json:"thumbnailUrl"`
+	Duration     int    `json:"duration,omitempty"`
+	UploadedAt   string `json:"uploadedAt"`
+}
+
+type VideoDetailDTO struct {
+	ID           string       `json:"id"`
+	Title        string       `json:"title"`
+	Description  string       `json:"description"`
+	ThumbnailURL string       `json:"thumbnailUrl"`
+	VideoURL     string       `json:"videoUrl"`
+	UploadedAt   string       `json:"uploadedAt"`
+	Duration     int          `json:"duration"`
+	Views        int          `json:"views"`
+	Author       *AuthorDTO   `json:"author,omitempty"`
+	Comments     []CommentDTO `json:"comments,omitempty"`
+}
+
+type AuthorDTO struct {
+	// ID        int64  `json:"id"`
+	// Username  string `json:"username"`
+	// AvatarURL string `json:"avatarUrl,omitempty"`
+}
+
+type CommentDTO struct {
+	// ID        int64 `json:"id"`
+	// Author    *AuthorDTO
+	// Text      string `json:"text"`
+	// CreatedAt string `json:"createdAt"`
+}
+
+type PaginationDTO struct {
+	// Page     int  `json:"page"`
+	// PageSize int  `json:"pageSize"`
+	// Total    int  `json:"total"`
+	// HasNext  bool `json:"hasNext"`
 }

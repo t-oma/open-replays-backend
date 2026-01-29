@@ -20,12 +20,14 @@ func NewLocalStorage(uploadDir string) *LocalStorage {
 }
 
 // Save saves a file to local disk.
-func (s *LocalStorage) Save(ctx context.Context, fileHeader *multipart.FileHeader, filename string) error {
+func (s *LocalStorage) Save(_ context.Context, fileHeader *multipart.FileHeader, filename string) error {
 	src, err := fileHeader.Open()
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
 	}
-	defer src.Close()
+	defer func() {
+		_ = src.Close()
+	}()
 
 	// Створюємо директорію якщо не існує
 	if err := os.MkdirAll(s.uploadDir, 0o755); err != nil {
@@ -37,7 +39,9 @@ func (s *LocalStorage) Save(ctx context.Context, fileHeader *multipart.FileHeade
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
-	defer dst.Close()
+	defer func() {
+		_ = dst.Close()
+	}()
 
 	// Копіюємо вміст
 	if _, err := io.Copy(dst, src); err != nil {
@@ -48,7 +52,7 @@ func (s *LocalStorage) Save(ctx context.Context, fileHeader *multipart.FileHeade
 }
 
 // Delete deletes a file from local disk.
-func (s *LocalStorage) Delete(ctx context.Context, filename string) error {
+func (s *LocalStorage) Delete(_ context.Context, filename string) error {
 	path := filepath.Join(s.uploadDir, filename)
 	return os.Remove(path)
 }

@@ -5,14 +5,15 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
-	_ "github.com/mattn/go-sqlite3"
 	sqlite "open-replays/api/internal/api/db"
 	"open-replays/api/internal/api/http/router"
 	repodb "open-replays/api/internal/api/repository/sqlite"
 	"open-replays/api/internal/api/repository/storage"
 	"open-replays/api/internal/api/usecase"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func Run() error {
@@ -28,7 +29,9 @@ func Run() error {
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	if err := sqlite.Migrate(db); err != nil {
 		return err

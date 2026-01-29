@@ -2,6 +2,7 @@ package v1
 
 import (
 	"errors"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"open-replays/api/internal/api/domain"
@@ -30,23 +31,25 @@ func (h *VideosHandler) List(c *gin.Context) {
 		return
 	}
 
-	response := make([]VideoResponse, len(videos))
+	summaries := make([]VideoSummaryDTO, len(videos))
 	for i, video := range videos {
-		response[i] = VideoResponse{
-			Video:        video,
-			Thumbnail:    "/thumbnails/" + video.Filename + ".jpg",
-			FullFilename: video.Filename + video.Extension,
+		summaries[i] = VideoSummaryDTO{
+			ID:           video.ID,
+			Title:        video.Title,
+			ThumbnailURL: "/thumbnails/" + video.Filename + ".jpg",
+			UploadedAt:   video.UploadedAt.Format(time.RFC3339),
+			Duration:     video.Duration,
 		}
 	}
 
 	c.JSON(200, APIResponse{
 		Success: true,
-		Data:    gin.H{"videos": response},
+		Data:    gin.H{"videos": summaries},
 	})
 }
 
-// GetByFilename gets a video by filename.
-func (h *VideosHandler) GetByFilename(c *gin.Context) {
+// GetByID gets a video by ID.
+func (h *VideosHandler) GetByID(c *gin.Context) {
 	var req GetVideoRequest
 	if err := c.ShouldBindUri(&req); err != nil {
 		c.JSON(400, APIResponse{
@@ -57,21 +60,31 @@ func (h *VideosHandler) GetByFilename(c *gin.Context) {
 		return
 	}
 
-	getByFilenameParams := usecase.GetByFilenameParams{Filename: req.Filename}
-	video, err := h.service.GetByFilename(c.Request.Context(), getByFilenameParams)
+	getByIDParams := usecase.GetByIDParams{ID: req.ID}
+	video, err := h.service.GetByID(c.Request.Context(), getByIDParams)
 	if err != nil {
-		c.JSON(500, APIResponse{
-			Success: false,
-			Code:    500,
-			Error:   err.Error(),
-		})
+		if errors.Is(err, domain.ErrNotFound) {
+			c.JSON(404, APIResponse{Success: false, Error: domain.ErrVideoNotFound.Error()})
+			return
+		}
+		c.JSON(500, APIResponse{Success: false, Error: "internal error"})
 		return
 	}
 
-	c.JSON(200, APIResponse{
-		Success: true,
-		Data:    gin.H{"video": video},
-	})
+	detail := VideoDetailDTO{
+		ID:           video.ID,
+		Title:        video.Title,
+		Description:  video.Description,
+		ThumbnailURL: "/thumbnails/" + video.Thumbnail,
+		VideoURL:     "/" + video.ID,
+		UploadedAt:   video.UploadedAt.Format(time.RFC3339),
+		Duration:     video.Duration,
+		Views:        video.Views,
+		Author:       &AuthorDTO{},
+		Comments:     []CommentDTO{},
+	}
+
+	c.JSON(200, APIResponse{Success: true, Data: detail})
 }
 
 // Upload uploads a video.
@@ -109,7 +122,7 @@ func (h *VideosHandler) Upload(c *gin.Context) {
 
 	c.JSON(200, APIResponse{
 		Success: true,
-		Data:    gin.H{"filename": video.Filename + "." + video.Extension},
+		Data:    gin.H{"id": video.ID},
 		Message: "File uploaded successfully",
 	})
 }
@@ -126,7 +139,7 @@ func (h *VideosHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	deleteParams := usecase.DeleteParams{Filename: req.Filename}
+	deleteParams := usecase.DeleteParams{ID: req.ID}
 	err := h.service.Delete(c.Request.Context(), deleteParams)
 	if err != nil {
 		switch {
@@ -158,7 +171,7 @@ func (h *VideosHandler) Watch(c *gin.Context) {
 		return
 	}
 
-	watchParams := usecase.WatchParams{Filename: req.Filename}
+	watchParams := usecase.WatchParams{ID: req.ID}
 	file, err := h.service.Watch(c.Request.Context(), watchParams)
 	if err != nil {
 		switch {

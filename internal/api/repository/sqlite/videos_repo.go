@@ -28,10 +28,12 @@ func (r *VideosRepo) List(ctx context.Context) ([]domain.Video, error) {
 	out := make([]domain.Video, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, domain.Video{
-			Filename:    row.Filename,
-			Extension:   row.Extension,
+			ID:          row.ID,
 			Title:       row.Title,
 			Description: row.Description,
+			Filename:    row.Filename,
+			Extension:   row.Extension,
+			Duration:    int(row.Duration),
 			UploadedAt:  row.UploadedAt,
 		})
 	}
@@ -39,18 +41,20 @@ func (r *VideosRepo) List(ctx context.Context) ([]domain.Video, error) {
 	return out, nil
 }
 
-// GetByFilename gets a video by filename.
-func (r *VideosRepo) GetByFilename(ctx context.Context, filename string) (domain.Video, error) {
-	row, err := r.q.GetVideo(ctx, filename)
+// GetByID gets a video by ID.
+func (r *VideosRepo) GetByID(ctx context.Context, id string) (domain.Video, error) {
+	row, err := r.q.GetVideo(ctx, id)
 	if err != nil {
 		return domain.Video{}, err
 	}
 
 	return domain.Video{
+		ID:          row.ID,
 		Filename:    row.Filename,
 		Extension:   row.Extension,
 		Title:       row.Title,
 		Description: row.Description,
+		Duration:    int(row.Duration),
 		UploadedAt:  row.UploadedAt,
 	}, nil
 }
@@ -58,10 +62,12 @@ func (r *VideosRepo) GetByFilename(ctx context.Context, filename string) (domain
 // Create uploads a video.
 func (r *VideosRepo) Create(ctx context.Context, video domain.Video) (domain.Video, error) {
 	row, err := r.q.CreateVideo(ctx, sqlc.CreateVideoParams{
+		ID:          video.ID,
 		Title:       video.Title,
 		Description: video.Description,
 		Filename:    video.Filename,
 		Extension:   video.Extension,
+		Duration:    int64(video.Duration),
 		UploadedAt:  video.UploadedAt,
 	})
 	if err != nil {
@@ -69,10 +75,12 @@ func (r *VideosRepo) Create(ctx context.Context, video domain.Video) (domain.Vid
 	}
 
 	return domain.Video{
-		Filename:    row.Filename,
-		Extension:   row.Extension,
+		ID:          row.ID,
 		Title:       row.Title,
 		Description: row.Description,
+		Filename:    row.Filename,
+		Extension:   row.Extension,
+		Duration:    int(row.Duration),
 		UploadedAt:  row.UploadedAt,
 	}, nil
 }

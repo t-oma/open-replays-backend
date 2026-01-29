@@ -9,9 +9,12 @@ import (
 )
 
 type Video struct {
-	Filename    string
-	Extension   string
+	ID          string
 	Title       string
 	Description string
+	Filename    string
+	Extension   string
+	Thumbnail   string
+	Duration    int64
 	UploadedAt  time.Time
 }

@@ -11,68 +11,80 @@ import (
 )
 
 const createVideo = `-- name: CreateVideo :one
-INSERT INTO videos (title, description, filename, extension, uploaded_at) 
-VALUES (?, ?, ?, ?, ?) 
-RETURNING filename, extension, title, description, uploaded_at
+INSERT INTO videos (id, title, description, filename, extension, duration, thumbnail, uploaded_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?) 
+RETURNING id, title, description, filename, extension, thumbnail, duration, uploaded_at
 `
 
 type CreateVideoParams struct {
+	ID          string
 	Title       string
 	Description string
 	Filename    string
 	Extension   string
+	Duration    int64
+	Thumbnail   string
 	UploadedAt  time.Time
 }
 
 func (q *Queries) CreateVideo(ctx context.Context, arg CreateVideoParams) (Video, error) {
 	row := q.db.QueryRowContext(ctx, createVideo,
+		arg.ID,
 		arg.Title,
 		arg.Description,
 		arg.Filename,
 		arg.Extension,
+		arg.Duration,
+		arg.Thumbnail,
 		arg.UploadedAt,
 	)
 	var i Video
 	err := row.Scan(
-		&i.Filename,
-		&i.Extension,
+		&i.ID,
 		&i.Title,
 		&i.Description,
+		&i.Filename,
+		&i.Extension,
+		&i.Thumbnail,
+		&i.Duration,
 		&i.UploadedAt,
 	)
 	return i, err
 }
 
 const deleteVideo = `-- name: DeleteVideo :exec
-DELETE FROM videos 
-WHERE title = ?
+DELETE FROM videos
+WHERE id = ?
 `
 
-func (q *Queries) DeleteVideo(ctx context.Context, title string) error {
-	_, err := q.db.ExecContext(ctx, deleteVideo, title)
+func (q *Queries) DeleteVideo(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteVideo, id)
 	return err
 }
 
 const getVideo = `-- name: GetVideo :one
-SELECT filename, extension, title, description, uploaded_at FROM videos 
-WHERE filename = ?
+SELECT id, title, description, filename, extension, thumbnail, duration, uploaded_at FROM videos 
+WHERE id = ?
 `
 
-func (q *Queries) GetVideo(ctx context.Context, filename string) (Video, error) {
-	row := q.db.QueryRowContext(ctx, getVideo, filename)
+func (q *Queries) GetVideo(ctx context.Context, id string) (Video, error) {
+	row := q.db.QueryRowContext(ctx, getVideo, id)
 	var i Video
 	err := row.Scan(
-		&i.Filename,
-		&i.Extension,
+		&i.ID,
 		&i.Title,
 		&i.Description,
+		&i.Filename,
+		&i.Extension,
+		&i.Thumbnail,
+		&i.Duration,
 		&i.UploadedAt,
 	)
 	return i, err
 }
 
 const listVideos = `-- name: ListVideos :many
-SELECT filename, extension, title, description, uploaded_at FROM videos
+SELECT id, title, description, filename, extension, thumbnail, duration, uploaded_at FROM videos
 `
 
 func (q *Queries) ListVideos(ctx context.Context) ([]Video, error) {
@@ -85,10 +97,13 @@ func (q *Queries) ListVideos(ctx context.Context) ([]Video, error) {
 	for rows.Next() {
 		var i Video
 		if err := rows.Scan(
-			&i.Filename,
-			&i.Extension,
+			&i.ID,
 			&i.Title,
 			&i.Description,
+			&i.Filename,
+			&i.Extension,
+			&i.Thumbnail,
+			&i.Duration,
 			&i.UploadedAt,
 		); err != nil {
 			return nil, err
