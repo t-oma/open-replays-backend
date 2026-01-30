@@ -1,7 +1,10 @@
 package v1
 
 import (
+	"database/sql"
 	"errors"
+	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -63,10 +66,17 @@ func (h *VideosHandler) GetByID(c *gin.Context) {
 	getByIDParams := usecase.GetByIDParams{ID: req.ID}
 	video, err := h.service.GetByID(c.Request.Context(), getByIDParams)
 	if err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			c.JSON(404, APIResponse{Success: false, Error: domain.ErrVideoNotFound.Error()})
+		if errors.Is(err, domain.ErrNotFound) || errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound,
+				APIResponse{
+					Success: false,
+					Code:    http.StatusNotFound,
+					Error:   domain.ErrVideoNotFound.Error(),
+				})
 			return
 		}
+		fmt.Println(err)
+
 		c.JSON(500, APIResponse{Success: false, Error: "internal error"})
 		return
 	}
@@ -77,11 +87,11 @@ func (h *VideosHandler) GetByID(c *gin.Context) {
 		Description:  video.Description,
 		ThumbnailURL: "/thumbnails/" + video.Thumbnail,
 		VideoURL:     "/" + video.ID,
-		UploadedAt:   video.UploadedAt.Format(time.RFC3339),
 		Duration:     video.Duration,
 		Views:        video.Views,
-		Author:       &AuthorDTO{},
-		Comments:     []CommentDTO{},
+		// Author:       &AuthorDTO{},
+		// Comments:     []CommentDTO{},
+		UploadedAt: video.UploadedAt.Format(time.RFC3339),
 	}
 
 	c.JSON(200, APIResponse{Success: true, Data: detail})
@@ -172,13 +182,13 @@ func (h *VideosHandler) Watch(c *gin.Context) {
 	}
 
 	watchParams := usecase.WatchParams{ID: req.ID}
-	file, err := h.service.Watch(c.Request.Context(), watchParams)
+	reader, video, err := h.service.Watch(c.Request.Context(), watchParams)
 	if err != nil {
 		switch {
-		case errors.Is(err, domain.ErrFileNotFound):
-			c.JSON(404, APIResponse{
+		case errors.Is(err, domain.ErrFileNotFound), errors.Is(err, domain.ErrVideoNotFound), errors.Is(err, sql.ErrNoRows):
+			c.JSON(http.StatusNotFound, APIResponse{
 				Success: false,
-				Code:    404,
+				Code:    http.StatusNotFound,
 				Error:   err.Error(),
 			})
 			return
@@ -191,6 +201,26 @@ func (h *VideosHandler) Watch(c *gin.Context) {
 			return
 		}
 	}
+	defer reader.Close()
 
-	c.File(file)
+	contentType := getContentType(video.Extension)
+	filename := fmt.Sprintf("%s%s", video.Filename, video.Extension)
+
+	c.Header("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", filename))
+	c.Header("Content-Type", contentType)
+
+	c.DataFromReader(http.StatusOK, -1, contentType, reader, nil)
+}
+
+func getContentType(ext string) string {
+	switch ext {
+	case "mp4":
+		return "video/mp4"
+	case "webm":
+		return "video/webm"
+	case "mov":
+		return "video/quicktime"
+	default:
+		return "application/octet-stream"
+	}
 }

@@ -5,15 +5,14 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+	_ "github.com/mattn/go-sqlite3"
 	sqlite "open-replays/api/internal/api/db"
 	"open-replays/api/internal/api/http/router"
 	repodb "open-replays/api/internal/api/repository/sqlite"
 	"open-replays/api/internal/api/repository/storage"
 	"open-replays/api/internal/api/usecase"
-
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 func Run() error {
@@ -40,12 +39,11 @@ func Run() error {
 	r := gin.Default()
 	r.Use(cors.Default())
 
-	videosStorage := storage.NewLocalStorage("uploads/videos")
-	thumbnailsStorage := storage.NewLocalStorage("uploads/thumbnails")
+	localStorage := storage.NewLocalStorage("uploads", "http://localhost:8080/media")
 	videosRepo := repodb.NewVideosRepo(db)
-	thumbnailsService := usecase.NewFFmpegThumbnailService()
-	videoProcessor := usecase.NewVideoProcessor(thumbnailsService, videosStorage, thumbnailsStorage, 2)
-	videosUC := usecase.NewVideosService(videosRepo, videosStorage, thumbnailsStorage, videoProcessor)
+	thumbnailsService := usecase.NewFFmpegThumbnailService(localStorage)
+	videoProcessor := usecase.NewVideoProcessor(thumbnailsService, videosRepo, localStorage, 2)
+	videosUC := usecase.NewVideosService(videosRepo, localStorage, videoProcessor)
 
 	router.Register(r, videosUC)
 

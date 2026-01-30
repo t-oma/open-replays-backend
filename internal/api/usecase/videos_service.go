@@ -3,11 +3,13 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"io"
+	"log"
+	"mime/multipart"
 	"path/filepath"
 	"sort"
 	"time"
 
-	gonanoid "github.com/matoous/go-nanoid/v2"
 	"open-replays/api/internal/api/domain"
 	"open-replays/api/internal/api/repository/interfaces"
 	"open-replays/api/internal/api/stringutil"
@@ -29,24 +31,21 @@ var AllowedExtensions = map[string]bool{
 
 // VideosService is a service for videos.
 type VideosService struct {
-	repo             interfaces.VideosRepository
-	videoStorage     interfaces.StorageService
-	thumbnailStorage interfaces.StorageService
-	processor        *VideoProcessor
+	repo      interfaces.VideosRepository
+	storage   interfaces.StorageService
+	processor *VideoProcessor
 }
 
 // NewVideosService creates a new VideosService.
 func NewVideosService(
 	repo interfaces.VideosRepository,
-	videoStorage interfaces.StorageService,
-	thumbnailStorage interfaces.StorageService,
+	storage interfaces.StorageService,
 	processor *VideoProcessor,
 ) *VideosService {
 	return &VideosService{
-		repo:             repo,
-		videoStorage:     videoStorage,
-		thumbnailStorage: thumbnailStorage,
-		processor:        processor,
+		repo:      repo,
+		storage:   storage,
+		processor: processor,
 	}
 }
 
@@ -65,76 +64,65 @@ func (s *VideosService) List(ctx context.Context) ([]domain.Video, error) {
 }
 
 // GetByID gets a video by ID.
-func (s *VideosService) GetByID(ctx context.Context, params GetByIDParams) (domain.Video, error) {
+func (s *VideosService) GetByID(ctx context.Context, params GetByIDParams) (*domain.Video, error) {
 	return s.repo.GetByID(ctx, params.ID)
 }
 
 // Upload uploads a video.
-func (s *VideosService) Upload(ctx context.Context, params UploadParams) (domain.Video, error) {
-	// 1. Extension validation
+func (s *VideosService) Upload(ctx context.Context, params UploadParams) (*domain.Video, error) {
 	ext := filepath.Ext(params.File.Filename)
 	if !AllowedExtensions[ext] {
-		return domain.Video{}, domain.ErrInvalidFileType
+		return nil, domain.ErrInvalidFileType
 	}
-
-	// 2. Size validation
 	if params.File.Size > MaxFileSize {
-		return domain.Video{}, domain.ErrFileTooLarge
+		return nil, domain.ErrFileTooLarge
 	}
-
-	// 3. Bisness rules validation (title required)
 	if params.Title == "" {
-		return domain.Video{}, domain.ErrValidation
+		return nil, domain.ErrValidation
 	}
 
-	// 4. Unique filename generation
 	uploadTime := time.Now()
-	baseFilename := stringutil.TrimExt(params.File.Filename)
-	uniqueFilename := fmt.Sprintf("%s-%d", baseFilename, uploadTime.Unix())
+	uniqueFilename := fmt.Sprintf(
+		"%s-%d", stringutil.TrimExt(params.File.Filename), uploadTime.Unix(),
+	)
+	videoPath := fmt.Sprintf("videos/%s%s", uniqueFilename, ext)
 
-	// 5. Save file via storage service
-	if err := s.videoStorage.Save(ctx, params.File, uniqueFilename+ext); err != nil {
-		return domain.Video{}, fmt.Errorf("failed to save file: %w", err)
+	// Save file via storage service
+	if err := s.storage.Save(ctx, params.File, videoPath); err != nil {
+		return nil, fmt.Errorf("failed to save file: %w", err)
 	}
 
-	id, err := gonanoid.New()
-	if err != nil {
-		return domain.Video{}, fmt.Errorf("failed to generate id: %w", err)
-	}
-
-	// 6. Create domain model
 	video := domain.Video{
-		ID:          id,
 		Title:       params.Title,
 		Description: params.Description,
 		Filename:    uniqueFilename,
-		Extension:   ext[1:],
-		Duration:    60,
+		Extension:   ext,
+		Duration:    0,
 		UploadedAt:  uploadTime,
 	}
 
-	// 7. Save video metadata
 	savedVideo, err := s.repo.Create(ctx, video)
 	if err != nil {
 		// Rollback: delete file if failed to save video metadata
-		_ = s.videoStorage.Delete(ctx, uniqueFilename+ext)
-		// _ = s.thumbnailStorage.Delete(ctx, thumbnailFilename)
-		return domain.Video{}, fmt.Errorf("failed to save video metadata: %w", err)
+		if delErr := s.storage.Delete(ctx, videoPath); delErr != nil {
+			log.Printf("failed to rollback file deletion: %v", delErr)
+		}
+		return nil, fmt.Errorf("failed to save video metadata: %w", err)
 	}
 
-	// 8. Generate thumbnail
-	thumbnailFilename := uniqueFilename + ".jpg"
-	if params.Thumbnail == nil || params.Thumbnail.Filename == "" && params.Thumbnail.Size == 0 {
+	thumbnailPath := fmt.Sprintf("thumbnails/%s.jpg", uniqueFilename)
+	if s.shouldGenerateThumbnail(params.Thumbnail) {
 		s.processor.Enqueue(ProcessingJob{
+			VideoID:       savedVideo.ID,
 			VideoFilename: savedVideo.Filename,
 			VideoExt:      ext,
 		})
 	} else {
-		if err := s.thumbnailStorage.Save(ctx, params.Thumbnail, thumbnailFilename); err != nil {
-			// Rollback: delete video metadata and file if failed to save thumbnail
-			_ = s.videoStorage.Delete(ctx, uniqueFilename+ext)
-			_ = s.repo.Delete(ctx, savedVideo.Filename)
-			return domain.Video{}, fmt.Errorf("failed to save thumbnail: %w", err)
+		if err := s.storage.Save(ctx, params.Thumbnail, thumbnailPath); err != nil {
+			log.Printf("failed to save thumbnail: %v", err)
+		} else {
+			// Update thumbnail path in DB
+			_ = s.repo.UpdateVideoMetadata(ctx, savedVideo.ID, thumbnailPath, 0)
 		}
 	}
 
@@ -143,7 +131,7 @@ func (s *VideosService) Upload(ctx context.Context, params UploadParams) (domain
 
 // Delete deletes a video.
 func (s *VideosService) Delete(ctx context.Context, params DeleteParams) error {
-	err := s.videoStorage.Delete(ctx, params.ID)
+	err := s.storage.Delete(ctx, params.ID)
 	if err != nil {
 		return err
 	}
@@ -152,20 +140,31 @@ func (s *VideosService) Delete(ctx context.Context, params DeleteParams) error {
 }
 
 // Watch watch a video
-func (s *VideosService) Watch(ctx context.Context, params WatchParams) (string, error) {
+func (s *VideosService) Watch(ctx context.Context, params WatchParams) (io.ReadCloser, *domain.Video, error) {
 	if params.ID == "" {
-		return "", domain.ErrVideoNotFound
+		return nil, nil, domain.ErrVideoNotFound
 	}
 
 	video, err := s.GetByID(ctx, GetByIDParams(params))
 	if err != nil {
-		return "", err
+		return nil, nil, err
 	}
 
-	files, _ := filepath.Glob(s.videoStorage.GetPath(video.Filename + "." + video.Extension))
-	if len(files) == 0 {
-		return "", domain.ErrFileNotFound
+	videoKey := fmt.Sprintf("videos/%s%s", video.Filename, video.Extension)
+
+	exists, err := s.storage.Exists(ctx, videoKey)
+	if err != nil || !exists {
+		return nil, nil, domain.ErrFileNotFound
 	}
 
-	return files[0], nil
+	reader, err := s.storage.Open(ctx, videoKey)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to open video file: %w", err)
+	}
+
+	return reader, video, nil
+}
+
+func (s *VideosService) shouldGenerateThumbnail(thumbnail *multipart.FileHeader) bool {
+	return thumbnail == nil || thumbnail.Size == 0
 }

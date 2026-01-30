@@ -6,5 +6,6 @@ CREATE TABLE IF NOT EXISTS videos (
     extension       TEXT NOT NULL,
     thumbnail       TEXT NOT NULL,
     duration        INTEGER NOT NULL,
+    views           INTEGER NOT NULL,
     uploaded_at     TIMESTAMP NOT NULL
 );

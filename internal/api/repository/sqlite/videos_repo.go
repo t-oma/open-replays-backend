@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 
+	gonanoid "github.com/matoous/go-nanoid/v2"
 	"open-replays/api/internal/api/db/sqlc"
 	"open-replays/api/internal/api/domain"
 )
@@ -42,27 +43,34 @@ func (r *VideosRepo) List(ctx context.Context) ([]domain.Video, error) {
 }
 
 // GetByID gets a video by ID.
-func (r *VideosRepo) GetByID(ctx context.Context, id string) (domain.Video, error) {
+func (r *VideosRepo) GetByID(ctx context.Context, id string) (*domain.Video, error) {
 	row, err := r.q.GetVideo(ctx, id)
 	if err != nil {
-		return domain.Video{}, err
+		return nil, err
 	}
 
-	return domain.Video{
+	return &domain.Video{
 		ID:          row.ID,
 		Filename:    row.Filename,
 		Extension:   row.Extension,
 		Title:       row.Title,
 		Description: row.Description,
+		Thumbnail:   row.Thumbnail,
 		Duration:    int(row.Duration),
+		Views:       int(row.Views),
 		UploadedAt:  row.UploadedAt,
 	}, nil
 }
 
 // Create uploads a video.
-func (r *VideosRepo) Create(ctx context.Context, video domain.Video) (domain.Video, error) {
+func (r *VideosRepo) Create(ctx context.Context, video domain.Video) (*domain.Video, error) {
+	id, err := gonanoid.New()
+	if err != nil {
+		return nil, err
+	}
+
 	row, err := r.q.CreateVideo(ctx, sqlc.CreateVideoParams{
-		ID:          video.ID,
+		ID:          id,
 		Title:       video.Title,
 		Description: video.Description,
 		Filename:    video.Filename,
@@ -71,10 +79,10 @@ func (r *VideosRepo) Create(ctx context.Context, video domain.Video) (domain.Vid
 		UploadedAt:  video.UploadedAt,
 	})
 	if err != nil {
-		return domain.Video{}, err
+		return nil, err
 	}
 
-	return domain.Video{
+	return &domain.Video{
 		ID:          row.ID,
 		Title:       row.Title,
 		Description: row.Description,
@@ -83,6 +91,15 @@ func (r *VideosRepo) Create(ctx context.Context, video domain.Video) (domain.Vid
 		Duration:    int(row.Duration),
 		UploadedAt:  row.UploadedAt,
 	}, nil
+}
+
+// UpdateVideoMetadata updates thumbnail path and duration for a video.
+func (r *VideosRepo) UpdateVideoMetadata(ctx context.Context, id string, thumbnailURL string, duration int) error {
+	return r.q.UpdateVideoMetadata(ctx, sqlc.UpdateVideoMetadataParams{
+		ID:        id,
+		Thumbnail: thumbnailURL,
+		Duration:  int64(duration),
+	})
 }
 
 // Delete deletes a video.

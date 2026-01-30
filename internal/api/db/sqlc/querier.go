@@ -13,6 +13,7 @@ type Querier interface {
 	DeleteVideo(ctx context.Context, id string) error
 	GetVideo(ctx context.Context, id string) (Video, error)
 	ListVideos(ctx context.Context) ([]Video, error)
+	UpdateVideoMetadata(ctx context.Context, arg UpdateVideoMetadataParams) error
 }
 
 var _ Querier = (*Queries)(nil)

@@ -8,7 +8,8 @@ import (
 
 type VideosRepository interface {
 	List(ctx context.Context) ([]domain.Video, error)
-	GetByID(ctx context.Context, id string) (domain.Video, error)
-	Create(ctx context.Context, video domain.Video) (domain.Video, error)
+	GetByID(ctx context.Context, id string) (*domain.Video, error)
+	Create(ctx context.Context, video domain.Video) (*domain.Video, error)
+	UpdateVideoMetadata(ctx context.Context, id string, thumbnailURL string, duration int) error
 	Delete(ctx context.Context, filename string) error
 }

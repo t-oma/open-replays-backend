@@ -16,5 +16,6 @@ type Video struct {
 	Extension   string
 	Thumbnail   string
 	Duration    int64
+	Views       int64
 	UploadedAt  time.Time
 }

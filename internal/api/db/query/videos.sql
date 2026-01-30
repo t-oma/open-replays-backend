@@ -10,6 +10,12 @@ INSERT INTO videos (id, title, description, filename, extension, duration, thumb
 VALUES (?, ?, ?, ?, ?, ?, ?, ?) 
 RETURNING *;
 
+
+-- name: UpdateVideoMetadata :exec
+UPDATE videos
+SET thumbnail = ?, duration = ?
+WHERE id = ?;
+
 -- name: DeleteVideo :exec
 DELETE FROM videos
 WHERE id = ?;
