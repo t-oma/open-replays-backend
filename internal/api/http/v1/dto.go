@@ -37,7 +37,7 @@ type VideoSummaryDTO struct {
 	ID           string `json:"id"`
 	Title        string `json:"title"`
 	ThumbnailURL string `json:"thumbnailUrl"`
-	Duration     int    `json:"duration,omitempty"`
+	Duration     int    `json:"duration"`
 	UploadedAt   string `json:"uploadedAt"`
 }
 
@@ -55,13 +55,13 @@ type VideoDetailDTO struct {
 }
 
 type AuthorDTO struct {
-	// ID        int64  `json:"id"`
+	ID int64 `json:"id"`
 	// Username  string `json:"username"`
 	// AvatarURL string `json:"avatarUrl,omitempty"`
 }
 
 type CommentDTO struct {
-	// ID        int64 `json:"id"`
+	ID int64 `json:"id"`
 	// Author    *AuthorDTO
 	// Text      string `json:"text"`
 	// CreatedAt string `json:"createdAt"`

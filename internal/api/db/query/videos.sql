@@ -6,14 +6,13 @@ SELECT * FROM videos
 WHERE id = ?;
 
 -- name: CreateVideo :one
-INSERT INTO videos (id, title, description, filename, extension, duration, thumbnail, uploaded_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?) 
+INSERT INTO videos (id, title, description, extension, duration, uploaded_at)
+VALUES (?, ?, ?, ?, ?, ?) 
 RETURNING *;
-
 
 -- name: UpdateVideoMetadata :exec
 UPDATE videos
-SET thumbnail = ?, duration = ?
+SET duration = ?
 WHERE id = ?;
 
 -- name: DeleteVideo :exec

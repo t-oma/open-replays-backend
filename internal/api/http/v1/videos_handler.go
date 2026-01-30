@@ -39,7 +39,7 @@ func (h *VideosHandler) List(c *gin.Context) {
 		summaries[i] = VideoSummaryDTO{
 			ID:           video.ID,
 			Title:        video.Title,
-			ThumbnailURL: "/thumbnails/" + video.Filename + ".jpg",
+			ThumbnailURL: video.ThumbnailURL,
 			UploadedAt:   video.UploadedAt.Format(time.RFC3339),
 			Duration:     video.Duration,
 		}
@@ -85,13 +85,13 @@ func (h *VideosHandler) GetByID(c *gin.Context) {
 		ID:           video.ID,
 		Title:        video.Title,
 		Description:  video.Description,
-		ThumbnailURL: "/thumbnails/" + video.Thumbnail,
-		VideoURL:     "/" + video.ID,
+		ThumbnailURL: video.ThumbnailURL,
+		VideoURL:     video.VideoURL,
 		Duration:     video.Duration,
 		Views:        video.Views,
-		// Author:       &AuthorDTO{},
-		// Comments:     []CommentDTO{},
-		UploadedAt: video.UploadedAt.Format(time.RFC3339),
+		Author:       nil,
+		Comments:     []CommentDTO{},
+		UploadedAt:   video.UploadedAt.Format(time.RFC3339),
 	}
 
 	c.JSON(200, APIResponse{Success: true, Data: detail})
@@ -167,60 +167,4 @@ func (h *VideosHandler) Delete(c *gin.Context) {
 		Success: true,
 		Message: "File deleted successfully",
 	})
-}
-
-// Watch watch a video
-func (h *VideosHandler) Watch(c *gin.Context) {
-	var req WatchVideoRequest
-	if err := c.ShouldBindUri(&req); err != nil {
-		c.JSON(400, APIResponse{
-			Success: false,
-			Code:    400,
-			Error:   err.Error(),
-		})
-		return
-	}
-
-	watchParams := usecase.WatchParams{ID: req.ID}
-	reader, video, err := h.service.Watch(c.Request.Context(), watchParams)
-	if err != nil {
-		switch {
-		case errors.Is(err, domain.ErrFileNotFound), errors.Is(err, domain.ErrVideoNotFound), errors.Is(err, sql.ErrNoRows):
-			c.JSON(http.StatusNotFound, APIResponse{
-				Success: false,
-				Code:    http.StatusNotFound,
-				Error:   err.Error(),
-			})
-			return
-		default:
-			c.JSON(500, APIResponse{
-				Success: false,
-				Code:    500,
-				Error:   err.Error(),
-			})
-			return
-		}
-	}
-	defer reader.Close()
-
-	contentType := getContentType(video.Extension)
-	filename := fmt.Sprintf("%s%s", video.Filename, video.Extension)
-
-	c.Header("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", filename))
-	c.Header("Content-Type", contentType)
-
-	c.DataFromReader(http.StatusOK, -1, contentType, reader, nil)
-}
-
-func getContentType(ext string) string {
-	switch ext {
-	case "mp4":
-		return "video/mp4"
-	case "webm":
-		return "video/webm"
-	case "mov":
-		return "video/quicktime"
-	default:
-		return "application/octet-stream"
-	}
 }

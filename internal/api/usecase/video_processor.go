@@ -18,9 +18,8 @@ type VideoProcessor struct {
 
 // ProcessingJob is a job for processing a video.
 type ProcessingJob struct {
-	VideoID       string
-	VideoFilename string
-	VideoExt      string
+	VideoID  string
+	VideoExt string
 }
 
 // NewVideoProcessor creates a new VideoProcessor.
@@ -58,22 +57,18 @@ func (p *VideoProcessor) worker() {
 }
 
 func (p *VideoProcessor) processVideo(ctx context.Context, job ProcessingJob) error {
-	videoKey := fmt.Sprintf("videos/%s%s", job.VideoFilename, job.VideoExt)
-	thumbnailKey := fmt.Sprintf("thumbnails/%s.jpg", job.VideoFilename)
+	videoKey := fmt.Sprintf("videos/%s%s", job.VideoID, job.VideoExt)
+	thumbnailKey := fmt.Sprintf("thumbnails/%s.jpg", job.VideoID)
 
-	// Generate thumbnail
-	if err := p.metadataService.Generate(ctx, videoKey, thumbnailKey); err != nil {
+	if err := p.metadataService.GenerateThumbnail(ctx, videoKey, thumbnailKey); err != nil {
 		return fmt.Errorf("failed to generate thumbnail: %w", err)
 	}
 
-	// Get video duration
 	duration, err := p.metadataService.GetDuration(ctx, videoKey)
 	if err != nil {
 		log.Printf("Failed to extract duration for video %s: %v", job.VideoID, err)
 		duration = 0
 	}
 
-	// 3. Оновлюємо БД
-	thumbnailURL := p.storage.GetURL(thumbnailKey)
-	return p.repo.UpdateVideoMetadata(ctx, job.VideoID, thumbnailURL, duration)
+	return p.repo.UpdateVideoMetadata(ctx, job.VideoID, duration)
 }

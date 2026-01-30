@@ -12,9 +12,7 @@ type Video struct {
 	ID          string
 	Title       string
 	Description string
-	Filename    string
 	Extension   string
-	Thumbnail   string
 	Duration    int64
 	Views       int64
 	UploadedAt  time.Time

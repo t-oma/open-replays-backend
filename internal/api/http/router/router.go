@@ -12,10 +12,9 @@ func Register(r *gin.Engine, videosService *usecase.VideosService) {
 	v1g := api.Group("/v1")
 
 	h := v1.NewVideosHandler(videosService)
-	v1g.GET("/:id", h.Watch)
 	v1g.GET("/videos", h.List)
 	v1g.GET("/videos/:id", h.GetByID)
 	v1g.POST("/videos/upload", h.Upload)
 
-	v1g.Static("/thumbnails", "./uploads/thumbnails")
+	r.Static("/media", "./uploads")
 }

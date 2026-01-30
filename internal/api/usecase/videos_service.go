@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"mime/multipart"
 	"path/filepath"
@@ -12,7 +11,6 @@ import (
 
 	"open-replays/api/internal/api/domain"
 	"open-replays/api/internal/api/repository/interfaces"
-	"open-replays/api/internal/api/stringutil"
 )
 
 const (
@@ -60,12 +58,22 @@ func (s *VideosService) List(ctx context.Context) ([]domain.Video, error) {
 		return videos[i].UploadedAt.After(videos[j].UploadedAt)
 	})
 
+	for i := range len(videos) {
+		videos[i].CreateURLs(s.storage.GetURL(""))
+	}
+
 	return videos, nil
 }
 
 // GetByID gets a video by ID.
 func (s *VideosService) GetByID(ctx context.Context, params GetByIDParams) (*domain.Video, error) {
-	return s.repo.GetByID(ctx, params.ID)
+	video, err := s.repo.GetByID(ctx, params.ID)
+	if err != nil {
+		return nil, err
+	}
+	video.CreateURLs(s.storage.GetURL(""))
+
+	return video, nil
 }
 
 // Upload uploads a video.
@@ -81,88 +89,69 @@ func (s *VideosService) Upload(ctx context.Context, params UploadParams) (*domai
 		return nil, domain.ErrValidation
 	}
 
-	uploadTime := time.Now()
-	uniqueFilename := fmt.Sprintf(
-		"%s-%d", stringutil.TrimExt(params.File.Filename), uploadTime.Unix(),
-	)
-	videoPath := fmt.Sprintf("videos/%s%s", uniqueFilename, ext)
-
-	// Save file via storage service
-	if err := s.storage.Save(ctx, params.File, videoPath); err != nil {
-		return nil, fmt.Errorf("failed to save file: %w", err)
-	}
-
 	video := domain.Video{
 		Title:       params.Title,
 		Description: params.Description,
-		Filename:    uniqueFilename,
 		Extension:   ext,
 		Duration:    0,
-		UploadedAt:  uploadTime,
+		Views:       0,
+		UploadedAt:  time.Now(),
 	}
 
 	savedVideo, err := s.repo.Create(ctx, video)
 	if err != nil {
-		// Rollback: delete file if failed to save video metadata
-		if delErr := s.storage.Delete(ctx, videoPath); delErr != nil {
-			log.Printf("failed to rollback file deletion: %v", delErr)
-		}
-		return nil, fmt.Errorf("failed to save video metadata: %w", err)
+		return nil, fmt.Errorf("failed to create video record: %w", err)
 	}
 
-	thumbnailPath := fmt.Sprintf("thumbnails/%s.jpg", uniqueFilename)
+	videoKey := savedVideo.GetVideoKey() // "videos/{id}{ext}"
+
+	if err := s.storage.Save(ctx, params.File, videoKey); err != nil {
+		// Rollback: delete video record
+		_ = s.repo.Delete(ctx, savedVideo.ID)
+		return nil, fmt.Errorf("failed to save file: %w", err)
+	}
+
 	if s.shouldGenerateThumbnail(params.Thumbnail) {
 		s.processor.Enqueue(ProcessingJob{
-			VideoID:       savedVideo.ID,
-			VideoFilename: savedVideo.Filename,
-			VideoExt:      ext,
+			VideoID:  savedVideo.ID,
+			VideoExt: ext,
 		})
 	} else {
-		if err := s.storage.Save(ctx, params.Thumbnail, thumbnailPath); err != nil {
+		thumbnailKey := savedVideo.GetThumbnailKey()
+		if err := s.storage.Save(ctx, params.Thumbnail, thumbnailKey); err != nil {
 			log.Printf("failed to save thumbnail: %v", err)
 		} else {
 			// Update thumbnail path in DB
-			_ = s.repo.UpdateVideoMetadata(ctx, savedVideo.ID, thumbnailPath, 0)
+			_ = s.repo.UpdateVideoMetadata(ctx, savedVideo.ID, 0)
 		}
 	}
+
+	savedVideo.CreateURLs(s.storage.GetURL(""))
 
 	return savedVideo, nil
 }
 
 // Delete deletes a video.
 func (s *VideosService) Delete(ctx context.Context, params DeleteParams) error {
-	err := s.storage.Delete(ctx, params.ID)
+	video, err := s.GetByID(ctx, GetByIDParams(params))
 	if err != nil {
 		return err
 	}
 
-	return s.repo.Delete(ctx, params.ID)
-}
+	videoKey := video.GetVideoKey()
+	thumbnailKey := video.GetThumbnailKey()
 
-// Watch watch a video
-func (s *VideosService) Watch(ctx context.Context, params WatchParams) (io.ReadCloser, *domain.Video, error) {
-	if params.ID == "" {
-		return nil, nil, domain.ErrVideoNotFound
+	if err := s.storage.Delete(ctx, videoKey); err != nil {
+		log.Printf("failed to delete video file %s: %v", videoKey, err)
 	}
 
-	video, err := s.GetByID(ctx, GetByIDParams(params))
-	if err != nil {
-		return nil, nil, err
+	if video.ThumbnailURL != "" {
+		if err := s.storage.Delete(ctx, thumbnailKey); err != nil {
+			log.Printf("failed to delete thumbnail %s: %v", thumbnailKey, err)
+		}
 	}
 
-	videoKey := fmt.Sprintf("videos/%s%s", video.Filename, video.Extension)
-
-	exists, err := s.storage.Exists(ctx, videoKey)
-	if err != nil || !exists {
-		return nil, nil, domain.ErrFileNotFound
-	}
-
-	reader, err := s.storage.Open(ctx, videoKey)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to open video file: %w", err)
-	}
-
-	return reader, video, nil
+	return s.repo.Delete(ctx, video.ID)
 }
 
 func (s *VideosService) shouldGenerateThumbnail(thumbnail *multipart.FileHeader) bool {

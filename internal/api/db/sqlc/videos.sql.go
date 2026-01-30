@@ -11,19 +11,17 @@ import (
 )
 
 const createVideo = `-- name: CreateVideo :one
-INSERT INTO videos (id, title, description, filename, extension, duration, thumbnail, uploaded_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?) 
-RETURNING id, title, description, filename, extension, thumbnail, duration, views, uploaded_at
+INSERT INTO videos (id, title, description, extension, duration, uploaded_at)
+VALUES (?, ?, ?, ?, ?, ?) 
+RETURNING id, title, description, extension, duration, views, uploaded_at
 `
 
 type CreateVideoParams struct {
 	ID          string
 	Title       string
 	Description string
-	Filename    string
 	Extension   string
 	Duration    int64
-	Thumbnail   string
 	UploadedAt  time.Time
 }
 
@@ -32,10 +30,8 @@ func (q *Queries) CreateVideo(ctx context.Context, arg CreateVideoParams) (Video
 		arg.ID,
 		arg.Title,
 		arg.Description,
-		arg.Filename,
 		arg.Extension,
 		arg.Duration,
-		arg.Thumbnail,
 		arg.UploadedAt,
 	)
 	var i Video
@@ -43,9 +39,7 @@ func (q *Queries) CreateVideo(ctx context.Context, arg CreateVideoParams) (Video
 		&i.ID,
 		&i.Title,
 		&i.Description,
-		&i.Filename,
 		&i.Extension,
-		&i.Thumbnail,
 		&i.Duration,
 		&i.Views,
 		&i.UploadedAt,
@@ -64,7 +58,7 @@ func (q *Queries) DeleteVideo(ctx context.Context, id string) error {
 }
 
 const getVideo = `-- name: GetVideo :one
-SELECT id, title, description, filename, extension, thumbnail, duration, views, uploaded_at FROM videos 
+SELECT id, title, description, extension, duration, views, uploaded_at FROM videos 
 WHERE id = ?
 `
 
@@ -75,9 +69,7 @@ func (q *Queries) GetVideo(ctx context.Context, id string) (Video, error) {
 		&i.ID,
 		&i.Title,
 		&i.Description,
-		&i.Filename,
 		&i.Extension,
-		&i.Thumbnail,
 		&i.Duration,
 		&i.Views,
 		&i.UploadedAt,
@@ -86,7 +78,7 @@ func (q *Queries) GetVideo(ctx context.Context, id string) (Video, error) {
 }
 
 const listVideos = `-- name: ListVideos :many
-SELECT id, title, description, filename, extension, thumbnail, duration, views, uploaded_at FROM videos
+SELECT id, title, description, extension, duration, views, uploaded_at FROM videos
 `
 
 func (q *Queries) ListVideos(ctx context.Context) ([]Video, error) {
@@ -102,9 +94,7 @@ func (q *Queries) ListVideos(ctx context.Context) ([]Video, error) {
 			&i.ID,
 			&i.Title,
 			&i.Description,
-			&i.Filename,
 			&i.Extension,
-			&i.Thumbnail,
 			&i.Duration,
 			&i.Views,
 			&i.UploadedAt,
@@ -124,17 +114,16 @@ func (q *Queries) ListVideos(ctx context.Context) ([]Video, error) {
 
 const updateVideoMetadata = `-- name: UpdateVideoMetadata :exec
 UPDATE videos
-SET thumbnail = ?, duration = ?
+SET duration = ?
 WHERE id = ?
 `
 
 type UpdateVideoMetadataParams struct {
-	Thumbnail string
-	Duration  int64
-	ID        string
+	Duration int64
+	ID       string
 }
 
 func (q *Queries) UpdateVideoMetadata(ctx context.Context, arg UpdateVideoMetadataParams) error {
-	_, err := q.db.ExecContext(ctx, updateVideoMetadata, arg.Thumbnail, arg.Duration, arg.ID)
+	_, err := q.db.ExecContext(ctx, updateVideoMetadata, arg.Duration, arg.ID)
 	return err
 }

@@ -13,15 +13,15 @@ import (
 	"open-replays/api/internal/api/repository/interfaces"
 )
 
-type FFmpegThumbnailService struct {
+type MetadataService struct {
 	storage interfaces.StorageService
 }
 
-func NewFFmpegThumbnailService(storage interfaces.StorageService) *FFmpegThumbnailService {
-	return &FFmpegThumbnailService{storage: storage}
+func NewMetadataService(storage interfaces.StorageService) *MetadataService {
+	return &MetadataService{storage: storage}
 }
 
-func (s *FFmpegThumbnailService) Generate(ctx context.Context, videoKey string, thumbnailKey string) error {
+func (s *MetadataService) GenerateThumbnail(ctx context.Context, videoKey string, thumbnailKey string) error {
 	videoTempFile, err := s.downloadToTemp(ctx, videoKey)
 	if err != nil {
 		return fmt.Errorf("failed to download video: %w", err)
@@ -51,7 +51,7 @@ func (s *FFmpegThumbnailService) Generate(ctx context.Context, videoKey string, 
 	return nil
 }
 
-func (s *FFmpegThumbnailService) GetDuration(ctx context.Context, videoKey string) (int, error) {
+func (s *MetadataService) GetDuration(ctx context.Context, videoKey string) (int, error) {
 	videoTempFile, err := s.downloadToTemp(ctx, videoKey)
 	if err != nil {
 		return 0, fmt.Errorf("failed to download video: %w", err)
@@ -79,7 +79,7 @@ func (s *FFmpegThumbnailService) GetDuration(ctx context.Context, videoKey strin
 	return int(duration), nil
 }
 
-func (s *FFmpegThumbnailService) downloadToTemp(ctx context.Context, key string) (string, error) {
+func (s *MetadataService) downloadToTemp(ctx context.Context, key string) (string, error) {
 	reader, err := s.storage.Open(ctx, key)
 	if err != nil {
 		return "", err
@@ -100,7 +100,7 @@ func (s *FFmpegThumbnailService) downloadToTemp(ctx context.Context, key string)
 	return tempFile.Name(), nil
 }
 
-func (s *FFmpegThumbnailService) uploadFromFile(ctx context.Context, filePath string, key string) error {
+func (s *MetadataService) uploadFromFile(ctx context.Context, filePath string, key string) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return err

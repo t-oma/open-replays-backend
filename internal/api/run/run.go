@@ -41,7 +41,7 @@ func Run() error {
 
 	localStorage := storage.NewLocalStorage("uploads", "http://localhost:8080/media")
 	videosRepo := repodb.NewVideosRepo(db)
-	thumbnailsService := usecase.NewFFmpegThumbnailService(localStorage)
+	thumbnailsService := usecase.NewMetadataService(localStorage)
 	videoProcessor := usecase.NewVideoProcessor(thumbnailsService, videosRepo, localStorage, 2)
 	videosUC := usecase.NewVideosService(videosRepo, localStorage, videoProcessor)
 

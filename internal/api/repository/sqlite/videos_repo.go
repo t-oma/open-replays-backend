@@ -32,9 +32,9 @@ func (r *VideosRepo) List(ctx context.Context) ([]domain.Video, error) {
 			ID:          row.ID,
 			Title:       row.Title,
 			Description: row.Description,
-			Filename:    row.Filename,
 			Extension:   row.Extension,
 			Duration:    int(row.Duration),
+			Views:       int(row.Views),
 			UploadedAt:  row.UploadedAt,
 		})
 	}
@@ -51,11 +51,9 @@ func (r *VideosRepo) GetByID(ctx context.Context, id string) (*domain.Video, err
 
 	return &domain.Video{
 		ID:          row.ID,
-		Filename:    row.Filename,
 		Extension:   row.Extension,
 		Title:       row.Title,
 		Description: row.Description,
-		Thumbnail:   row.Thumbnail,
 		Duration:    int(row.Duration),
 		Views:       int(row.Views),
 		UploadedAt:  row.UploadedAt,
@@ -73,7 +71,6 @@ func (r *VideosRepo) Create(ctx context.Context, video domain.Video) (*domain.Vi
 		ID:          id,
 		Title:       video.Title,
 		Description: video.Description,
-		Filename:    video.Filename,
 		Extension:   video.Extension,
 		Duration:    int64(video.Duration),
 		UploadedAt:  video.UploadedAt,
@@ -86,19 +83,18 @@ func (r *VideosRepo) Create(ctx context.Context, video domain.Video) (*domain.Vi
 		ID:          row.ID,
 		Title:       row.Title,
 		Description: row.Description,
-		Filename:    row.Filename,
 		Extension:   row.Extension,
 		Duration:    int(row.Duration),
+		Views:       int(row.Views),
 		UploadedAt:  row.UploadedAt,
 	}, nil
 }
 
 // UpdateVideoMetadata updates thumbnail path and duration for a video.
-func (r *VideosRepo) UpdateVideoMetadata(ctx context.Context, id string, thumbnailURL string, duration int) error {
+func (r *VideosRepo) UpdateVideoMetadata(ctx context.Context, id string, duration int) error {
 	return r.q.UpdateVideoMetadata(ctx, sqlc.UpdateVideoMetadataParams{
-		ID:        id,
-		Thumbnail: thumbnailURL,
-		Duration:  int64(duration),
+		ID:       id,
+		Duration: int64(duration),
 	})
 }
 
