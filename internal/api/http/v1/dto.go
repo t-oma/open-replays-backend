@@ -9,7 +9,6 @@ type APIResponse struct {
 	Message string `json:"message,omitempty"`
 	Data    any    `json:"data,omitempty"`
 	Error   string `json:"error,omitempty"`
-	Code    int    `json:"code,omitempty"`
 }
 
 type ListVideosRequest struct{}
