@@ -1,3 +1,4 @@
+// Package usecase contains business logic and use case implementations.
 package usecase
 
 import (

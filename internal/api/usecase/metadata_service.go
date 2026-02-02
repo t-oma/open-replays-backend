@@ -1,3 +1,4 @@
+// Package usecase contains business logic and use case implementations.
 package usecase
 
 import (
@@ -26,6 +27,7 @@ func NewMetadataService(storage repoiface.StorageService) *MetadataService {
 	return &MetadataService{storage: storage}
 }
 
+// GenerateThumbnail generates a thumbnail from a video at the 1-second mark.
 func (s *MetadataService) GenerateThumbnail(
 	ctx context.Context,
 	videoKey string,
@@ -63,6 +65,7 @@ func (s *MetadataService) GenerateThumbnail(
 	return nil
 }
 
+// GetDuration extracts the duration of a video in seconds.
 func (s *MetadataService) GetDuration(ctx context.Context, videoKey string) (int, error) {
 	videoTempFile, err := s.downloadToTemp(ctx, videoKey)
 	if err != nil {

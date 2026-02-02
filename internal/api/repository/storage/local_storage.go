@@ -1,3 +1,4 @@
+// Package storage provides storage implementations for file operations.
 package storage
 
 import (
@@ -29,6 +30,7 @@ func NewLocalStorage(baseDir, publicURL string) *LocalStorage {
 	}
 }
 
+// Save saves a file from multipart.FileHeader to storage.
 func (s *LocalStorage) Save(ctx context.Context, file *multipart.FileHeader, key string) error {
 	src, err := file.Open()
 	if err != nil {
@@ -39,6 +41,7 @@ func (s *LocalStorage) Save(ctx context.Context, file *multipart.FileHeader, key
 	return s.SaveReader(ctx, src, key, file.Header.Get("Content-Type"))
 }
 
+// SaveReader saves data from an io.Reader to storage.
 func (s *LocalStorage) SaveReader(
 	_ context.Context,
 	reader io.Reader,
@@ -65,10 +68,12 @@ func (s *LocalStorage) SaveReader(
 	return nil
 }
 
+// GetURL returns the public URL for a file.
 func (s *LocalStorage) GetURL(key string) string {
 	return fmt.Sprintf("%s/%s", s.publicURL, key)
 }
 
+// GetSignedURL returns a signed URL for a file (for local storage, returns public URL).
 func (s *LocalStorage) GetSignedURL(
 	_ context.Context,
 	key string,
@@ -78,12 +83,14 @@ func (s *LocalStorage) GetSignedURL(
 	return s.GetURL(key), nil
 }
 
-func (s *LocalStorage) Open(ctx context.Context, key string) (io.ReadCloser, error) {
+// Open opens a file for reading.
+func (s *LocalStorage) Open(_ context.Context, key string) (io.ReadCloser, error) {
 	fullPath := filepath.Join(s.baseDir, key)
 	return os.Open(fullPath)
 }
 
-func (s *LocalStorage) Exists(ctx context.Context, key string) (bool, error) {
+// Exists checks if a file exists in storage.
+func (s *LocalStorage) Exists(_ context.Context, key string) (bool, error) {
 	fullPath := filepath.Join(s.baseDir, key)
 	_, err := os.Stat(fullPath)
 	if err == nil {
@@ -95,7 +102,8 @@ func (s *LocalStorage) Exists(ctx context.Context, key string) (bool, error) {
 	return false, err
 }
 
-func (s *LocalStorage) Delete(ctx context.Context, key string) error {
+// Delete deletes a file from storage.
+func (s *LocalStorage) Delete(_ context.Context, key string) error {
 	fullPath := filepath.Join(s.baseDir, key)
 	return os.Remove(fullPath)
 }

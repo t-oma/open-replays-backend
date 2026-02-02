@@ -1,3 +1,4 @@
+// Package sqlite provides SQLite repository implementations.
 package sqlite
 
 import (
@@ -95,7 +96,7 @@ func (r *VideosRepo) Create(ctx context.Context, video domain.Video) (*domain.Vi
 	}, nil
 }
 
-// UpdateVideoMetadata updates thumbnail path and duration for a video.
+// UpdateVideoMetadata updates duration for a video.
 func (r *VideosRepo) UpdateVideoMetadata(ctx context.Context, id string, duration int) error {
 	return r.q.UpdateVideoMetadata(ctx, sqlc.UpdateVideoMetadataParams{
 		ID:       id,

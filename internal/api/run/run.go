@@ -1,3 +1,4 @@
+// Package run provides application initialization and startup logic.
 package run
 
 import (
@@ -19,6 +20,7 @@ import (
 	"open-replays/internal/api/usecase"
 )
 
+// Run initializes and starts the API server.
 func Run() error {
 	ctx := context.Background()
 

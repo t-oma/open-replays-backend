@@ -1,3 +1,4 @@
+// Package db provides database connection and migration utilities.
 package db
 
 import (
@@ -10,7 +11,7 @@ import (
 //go:embed schema/videos.sql
 var _videosDDL string
 
-// Migrate runs database migrations.
+// Migrate runs database migrations to create the videos table.
 func Migrate(ctx context.Context, db *sql.DB) error {
 	_, err := db.ExecContext(ctx, _videosDDL)
 	return err
