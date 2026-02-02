@@ -1,11 +1,13 @@
-package interfaces
+// Package repoiface defines repository interfaces.
+package repoiface
 
 import (
 	"context"
 
-	"open-replays/api/internal/api/domain"
+	"open-replays/internal/api/domain"
 )
 
+// VideosRepository defines the interface for video storage operations.
 type VideosRepository interface {
 	List(ctx context.Context) ([]domain.Video, error)
 	GetByID(ctx context.Context, id string) (*domain.Video, error)

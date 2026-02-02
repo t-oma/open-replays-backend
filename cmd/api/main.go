@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"open-replays/api/internal/api/run"
+	"open-replays/internal/api/run"
 )
 
 func main() {

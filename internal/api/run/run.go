@@ -1,21 +1,27 @@
 package run
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+
+	// SQLite driver.
 	_ "github.com/mattn/go-sqlite3"
-	sqlite "open-replays/api/internal/api/db"
-	"open-replays/api/internal/api/http/router"
-	repodb "open-replays/api/internal/api/repository/sqlite"
-	"open-replays/api/internal/api/repository/storage"
-	"open-replays/api/internal/api/usecase"
+
+	sqlite "open-replays/internal/api/db"
+	"open-replays/internal/api/http/router"
+	repodb "open-replays/internal/api/repository/sqlite"
+	"open-replays/internal/api/repository/storage"
+	"open-replays/internal/api/usecase"
 )
 
 func Run() error {
+	ctx := context.Background()
+
 	dbPath := os.Getenv("SQLITE_PATH")
 	if dbPath == "" {
 		dbPath = "db.sqlite3"
@@ -32,7 +38,7 @@ func Run() error {
 		_ = db.Close()
 	}()
 
-	if err := sqlite.Migrate(db); err != nil {
+	if err = sqlite.Migrate(ctx, db); err != nil {
 		return err
 	}
 

@@ -10,25 +10,37 @@ import (
 	"strconv"
 	"strings"
 
-	"open-replays/api/internal/api/repository/interfaces"
+	"open-replays/internal/api/repository/repoiface"
 )
 
+// MetadataService handles video metadata operations.
 type MetadataService struct {
-	storage interfaces.StorageService
+	storage repoiface.StorageService
 }
 
-func NewMetadataService(storage interfaces.StorageService) *MetadataService {
+// Compile-time interface compliance check.
+var _ repoiface.MetadataService = (*MetadataService)(nil)
+
+// NewMetadataService creates a new MetadataService.
+func NewMetadataService(storage repoiface.StorageService) *MetadataService {
 	return &MetadataService{storage: storage}
 }
 
-func (s *MetadataService) GenerateThumbnail(ctx context.Context, videoKey string, thumbnailKey string) error {
+func (s *MetadataService) GenerateThumbnail(
+	ctx context.Context,
+	videoKey string,
+	thumbnailKey string,
+) error {
 	videoTempFile, err := s.downloadToTemp(ctx, videoKey)
 	if err != nil {
-		return fmt.Errorf("failed to download video: %w", err)
+		return fmt.Errorf("download video: %w", err)
 	}
 	defer os.Remove(videoTempFile)
 
-	thumbnailTempFile := filepath.Join(os.TempDir(), fmt.Sprintf("thumb-%s", filepath.Base(thumbnailKey)))
+	thumbnailTempFile := filepath.Join(
+		os.TempDir(),
+		"thumb-"+filepath.Base(thumbnailKey),
+	)
 	defer os.Remove(thumbnailTempFile)
 
 	cmd := exec.CommandContext(ctx, "ffmpeg",
@@ -40,12 +52,12 @@ func (s *MetadataService) GenerateThumbnail(ctx context.Context, videoKey string
 		thumbnailTempFile,
 	)
 
-	if err := cmd.Run(); err != nil {
+	if err = cmd.Run(); err != nil {
 		return fmt.Errorf("ffmpeg failed: %w", err)
 	}
 
-	if err := s.uploadFromFile(ctx, thumbnailTempFile, thumbnailKey); err != nil {
-		return fmt.Errorf("failed to upload thumbnail: %w", err)
+	if err = s.uploadFromFile(ctx, thumbnailTempFile, thumbnailKey); err != nil {
+		return fmt.Errorf("upload thumbnail: %w", err)
 	}
 
 	return nil
@@ -54,7 +66,7 @@ func (s *MetadataService) GenerateThumbnail(ctx context.Context, videoKey string
 func (s *MetadataService) GetDuration(ctx context.Context, videoKey string) (int, error) {
 	videoTempFile, err := s.downloadToTemp(ctx, videoKey)
 	if err != nil {
-		return 0, fmt.Errorf("failed to download video: %w", err)
+		return 0, fmt.Errorf("download video: %w", err)
 	}
 	defer os.Remove(videoTempFile)
 
@@ -88,13 +100,13 @@ func (s *MetadataService) downloadToTemp(ctx context.Context, key string) (strin
 
 	tempFile, err := os.CreateTemp("", fmt.Sprintf("video-*%s", filepath.Ext(key)))
 	if err != nil {
-		return "", fmt.Errorf("failed to create temp file: %w", err)
+		return "", fmt.Errorf("create temp file: %w", err)
 	}
 	defer tempFile.Close()
 
-	if _, err := io.Copy(tempFile, reader); err != nil {
+	if _, err = io.Copy(tempFile, reader); err != nil {
 		os.Remove(tempFile.Name())
-		return "", fmt.Errorf("failed to copy to temp file: %w", err)
+		return "", fmt.Errorf("copy to temp file: %w", err)
 	}
 
 	return tempFile.Name(), nil

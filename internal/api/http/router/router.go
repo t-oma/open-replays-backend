@@ -2,8 +2,9 @@ package router
 
 import (
 	"github.com/gin-gonic/gin"
-	v1 "open-replays/api/internal/api/http/v1"
-	"open-replays/api/internal/api/usecase"
+
+	v1 "open-replays/internal/api/http/v1"
+	"open-replays/internal/api/usecase"
 )
 
 // Register registers all HTTP routes.

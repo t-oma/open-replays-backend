@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"open-replays/api/internal/api/domain"
-	"open-replays/api/internal/api/usecase"
+
+	"open-replays/internal/api/domain"
+	"open-replays/internal/api/usecase"
 )
 
 // VideosHandler is a handler for videos.
@@ -148,13 +149,10 @@ func (h *VideosHandler) Delete(c *gin.Context) {
 	deleteParams := usecase.DeleteParams{ID: req.ID}
 	err := h.service.Delete(c.Request.Context(), deleteParams)
 	if err != nil {
-		switch {
-		default:
-			c.JSON(http.StatusInternalServerError, APIResponse{
-				Success: false, Error: "internal server error",
-			})
-			return
-		}
+		c.JSON(http.StatusInternalServerError, APIResponse{
+			Success: false, Error: "internal server error",
+		})
+		return
 	}
 
 	c.JSON(http.StatusOK, APIResponse{

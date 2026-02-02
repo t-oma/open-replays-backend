@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"log"
 
-	"open-replays/api/internal/api/repository/interfaces"
+	"open-replays/internal/api/repository/repoiface"
 )
 
 // VideoProcessor is a service for processing videos.
 type VideoProcessor struct {
-	metadataService interfaces.MetadataService
-	repo            interfaces.VideosRepository
-	storage         interfaces.StorageService
+	metadataService repoiface.MetadataService
+	repo            repoiface.VideosRepository
+	storage         repoiface.StorageService
 	jobQueue        chan ProcessingJob
 }
 
@@ -24,9 +24,9 @@ type ProcessingJob struct {
 
 // NewVideoProcessor creates a new VideoProcessor.
 func NewVideoProcessor(
-	thumbnailService interfaces.MetadataService,
-	repo interfaces.VideosRepository,
-	storage interfaces.StorageService,
+	thumbnailService repoiface.MetadataService,
+	repo repoiface.VideosRepository,
+	storage repoiface.StorageService,
 	workers int,
 ) *VideoProcessor {
 	p := &VideoProcessor{
@@ -43,7 +43,7 @@ func NewVideoProcessor(
 	return p
 }
 
-// Enqueue enqueues a video for processing
+// Enqueue enqueues a video for processing.
 func (p *VideoProcessor) Enqueue(job ProcessingJob) {
 	p.jobQueue <- job
 }
@@ -51,7 +51,7 @@ func (p *VideoProcessor) Enqueue(job ProcessingJob) {
 func (p *VideoProcessor) worker() {
 	for job := range p.jobQueue {
 		if err := p.processVideo(context.Background(), job); err != nil {
-			log.Printf("Failed to process video %s: %v", job.VideoID, err)
+			log.Printf("process video %s: %v", job.VideoID, err)
 		}
 	}
 }
@@ -61,12 +61,12 @@ func (p *VideoProcessor) processVideo(ctx context.Context, job ProcessingJob) er
 	thumbnailKey := fmt.Sprintf("thumbnails/%s.jpg", job.VideoID)
 
 	if err := p.metadataService.GenerateThumbnail(ctx, videoKey, thumbnailKey); err != nil {
-		return fmt.Errorf("failed to generate thumbnail: %w", err)
+		return fmt.Errorf("generate thumbnail: %w", err)
 	}
 
 	duration, err := p.metadataService.GetDuration(ctx, videoKey)
 	if err != nil {
-		log.Printf("Failed to extract duration for video %s: %v", job.VideoID, err)
+		log.Printf("extract duration for video %s: %v", job.VideoID, err)
 		duration = 0
 	}
 

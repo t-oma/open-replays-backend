@@ -9,8 +9,8 @@ import (
 	"sort"
 	"time"
 
-	"open-replays/api/internal/api/domain"
-	"open-replays/api/internal/api/repository/interfaces"
+	"open-replays/internal/api/domain"
+	"open-replays/internal/api/repository/repoiface"
 )
 
 const (
@@ -29,15 +29,15 @@ var AllowedExtensions = map[string]bool{
 
 // VideosService is a service for videos.
 type VideosService struct {
-	repo      interfaces.VideosRepository
-	storage   interfaces.StorageService
+	repo      repoiface.VideosRepository
+	storage   repoiface.StorageService
 	processor *VideoProcessor
 }
 
 // NewVideosService creates a new VideosService.
 func NewVideosService(
-	repo interfaces.VideosRepository,
-	storage interfaces.StorageService,
+	repo repoiface.VideosRepository,
+	storage repoiface.StorageService,
 	processor *VideoProcessor,
 ) *VideosService {
 	return &VideosService{
@@ -100,15 +100,15 @@ func (s *VideosService) Upload(ctx context.Context, params UploadParams) (*domai
 
 	savedVideo, err := s.repo.Create(ctx, video)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create video record: %w", err)
+		return nil, fmt.Errorf("create video record: %w", err)
 	}
 
 	videoKey := savedVideo.GetVideoKey() // "videos/{id}{ext}"
 
-	if err := s.storage.Save(ctx, params.File, videoKey); err != nil {
+	if err = s.storage.Save(ctx, params.File, videoKey); err != nil {
 		// Rollback: delete video record
 		_ = s.repo.Delete(ctx, savedVideo.ID)
-		return nil, fmt.Errorf("failed to save file: %w", err)
+		return nil, fmt.Errorf("save file: %w", err)
 	}
 
 	if s.shouldGenerateThumbnail(params.Thumbnail) {
@@ -118,8 +118,8 @@ func (s *VideosService) Upload(ctx context.Context, params UploadParams) (*domai
 		})
 	} else {
 		thumbnailKey := savedVideo.GetThumbnailKey()
-		if err := s.storage.Save(ctx, params.Thumbnail, thumbnailKey); err != nil {
-			log.Printf("failed to save thumbnail: %v", err)
+		if err = s.storage.Save(ctx, params.Thumbnail, thumbnailKey); err != nil {
+			log.Printf("save thumbnail: %v", err)
 		} else {
 			// Update thumbnail path in DB
 			_ = s.repo.UpdateVideoMetadata(ctx, savedVideo.ID, 0)
@@ -141,13 +141,13 @@ func (s *VideosService) Delete(ctx context.Context, params DeleteParams) error {
 	videoKey := video.GetVideoKey()
 	thumbnailKey := video.GetThumbnailKey()
 
-	if err := s.storage.Delete(ctx, videoKey); err != nil {
-		log.Printf("failed to delete video file %s: %v", videoKey, err)
+	if err = s.storage.Delete(ctx, videoKey); err != nil {
+		log.Printf("delete video file %s: %v", videoKey, err)
 	}
 
 	if video.ThumbnailURL != "" {
-		if err := s.storage.Delete(ctx, thumbnailKey); err != nil {
-			log.Printf("failed to delete thumbnail %s: %v", thumbnailKey, err)
+		if err = s.storage.Delete(ctx, thumbnailKey); err != nil {
+			log.Printf("delete thumbnail %s: %v", thumbnailKey, err)
 		}
 	}
 

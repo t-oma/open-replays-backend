@@ -1,4 +1,5 @@
-package interfaces
+// Package repoiface defines repository interfaces.
+package repoiface
 
 import (
 	"context"
@@ -15,7 +16,7 @@ type StorageService interface {
 	// SaveReader saves data from io.Reader (for generated files)
 	SaveReader(ctx context.Context, reader io.Reader, key string, contentType string) error
 
-	// Detele deletes file
+	// Delete deletes file
 	Delete(ctx context.Context, key string) error
 
 	// Exists checks if file exists

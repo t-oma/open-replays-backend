@@ -5,14 +5,19 @@ import (
 	"database/sql"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
-	"open-replays/api/internal/api/db/sqlc"
-	"open-replays/api/internal/api/domain"
+
+	"open-replays/internal/api/db/sqlc"
+	"open-replays/internal/api/domain"
+	"open-replays/internal/api/repository/repoiface"
 )
 
 // VideosRepo is a repository for videos.
 type VideosRepo struct {
 	q *sqlc.Queries
 }
+
+// Compile-time interface compliance check.
+var _ repoiface.VideosRepository = (*VideosRepo)(nil)
 
 // NewVideosRepo creates a new VideosRepo.
 func NewVideosRepo(db *sql.DB) *VideosRepo {
