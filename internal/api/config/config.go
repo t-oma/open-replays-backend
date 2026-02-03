@@ -15,6 +15,7 @@ type Config struct {
 	Database DatabaseConfig `mapstructure:"database"`
 	Storage  StorageConfig  `mapstructure:"storage"`
 	Video    VideoConfig    `mapstructure:"video"`
+	Log      LogConfig      `mapstructure:"log"`
 }
 
 // ServerConfig holds HTTP server configuration.
@@ -48,6 +49,12 @@ func (v VideoConfig) MaxFileSizeBytes() (int64, error) {
 	return parseFileSize(v.MaxFileSize)
 }
 
+// LogConfig holds logging configuration.
+type LogConfig struct {
+	Level  string `mapstructure:"level"`
+	Format string `mapstructure:"format"`
+}
+
 // Load loads configuration from environment variables and config files.
 func Load() (*Config, error) {
 	viper.SetConfigName("config")
@@ -66,6 +73,8 @@ func Load() (*Config, error) {
 	viper.SetDefault("video.worker-count", 2)
 	viper.SetDefault("video.allowed-extensions", []string{".mp4", ".webm", ".mov"})
 	viper.SetDefault("video.max-file-size", "100MB")
+	viper.SetDefault("log.level", "info")
+	viper.SetDefault("log.format", "json")
 
 	// Environment variables
 	viper.SetEnvPrefix("OPEN_REPLAYS")

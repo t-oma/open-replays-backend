@@ -4,6 +4,8 @@ package run
 import (
 	"context"
 	"database/sql"
+	"log/slog"
+	"os"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -14,6 +16,7 @@ import (
 	"open-replays/internal/api/config"
 	sqlite "open-replays/internal/api/db"
 	"open-replays/internal/api/http/router"
+	"open-replays/internal/api/logger"
 	repodb "open-replays/internal/api/repository/sqlite"
 	"open-replays/internal/api/repository/storage"
 	"open-replays/internal/api/usecase"
@@ -27,6 +30,19 @@ func Run() error {
 	if err != nil {
 		return err
 	}
+
+	// Initialize logger
+	log, err := logger.New(logger.Config{
+		Level:  cfg.Log.Level,
+		Format: cfg.Log.Format,
+	}, os.Stdout)
+	if err != nil {
+		return err
+	}
+	slog.SetDefault(log)
+
+	slog.Info("starting server", "address", cfg.Server.Address())
+
 	maxFileSize, err := cfg.Video.MaxFileSizeBytes()
 	if err != nil {
 		return err

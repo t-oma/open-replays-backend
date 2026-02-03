@@ -18,3 +18,7 @@ video:
     - .mp4
     - .webm
     - .mov
+
+log:
+  level: info
+  format: json
