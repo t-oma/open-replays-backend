@@ -4,7 +4,7 @@ package usecase
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"mime/multipart"
 	"path/filepath"
 	"sort"
@@ -114,13 +114,15 @@ func (s *VideosService) Upload(ctx context.Context, params UploadParams) (*domai
 			VideoID:  savedVideo.ID,
 			VideoExt: ext,
 		})
+		slog.Info("thumbnail generation queued", "video_id", savedVideo.ID)
 	} else {
 		thumbnailKey := savedVideo.GetThumbnailKey()
 		if err = s.storage.Save(ctx, params.Thumbnail, thumbnailKey); err != nil {
-			log.Printf("save thumbnail: %v", err)
+			slog.Error("save thumbnail", "video_id", savedVideo.ID, "error", err)
 		} else {
 			// Update thumbnail path in DB
 			_ = s.repo.UpdateVideoMetadata(ctx, savedVideo.ID, 0)
+			slog.Info("thumbnail uploaded", "video_id", savedVideo.ID)
 		}
 	}
 
@@ -140,12 +142,12 @@ func (s *VideosService) Delete(ctx context.Context, params DeleteParams) error {
 	thumbnailKey := video.GetThumbnailKey()
 
 	if err = s.storage.Delete(ctx, videoKey); err != nil {
-		log.Printf("delete video file %s: %v", videoKey, err)
+		slog.Error("delete video file", "key", videoKey, "error", err)
 	}
 
 	if video.ThumbnailURL != "" {
 		if err = s.storage.Delete(ctx, thumbnailKey); err != nil {
-			log.Printf("delete thumbnail %s: %v", thumbnailKey, err)
+			slog.Error("delete thumbnail", "key", thumbnailKey, "error", err)
 		}
 	}
 

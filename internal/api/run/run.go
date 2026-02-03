@@ -62,6 +62,7 @@ func Run() error {
 
 	r := gin.Default()
 	r.Use(cors.Default())
+	// r.Use(middleware.Logger())
 
 	localStorage := storage.NewLocalStorage(cfg.Storage.BaseDir, cfg.Storage.PublicURL)
 	videosRepo := repodb.NewVideosRepo(db)

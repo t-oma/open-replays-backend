@@ -4,6 +4,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 
@@ -70,6 +71,7 @@ func (r *VideosRepo) GetByID(ctx context.Context, id string) (*domain.Video, err
 func (r *VideosRepo) Create(ctx context.Context, video domain.Video) (*domain.Video, error) {
 	id, err := gonanoid.New()
 	if err != nil {
+		slog.Error("generate video id", "error", err)
 		return nil, err
 	}
 
@@ -82,8 +84,11 @@ func (r *VideosRepo) Create(ctx context.Context, video domain.Video) (*domain.Vi
 		UploadedAt:  video.UploadedAt,
 	})
 	if err != nil {
+		slog.Error("create video in db", "id", id, "error", err)
 		return nil, err
 	}
+
+	slog.Info("video created", "id", id, "title", video.Title)
 
 	return &domain.Video{
 		ID:          row.ID,
