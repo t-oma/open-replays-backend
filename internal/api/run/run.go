@@ -4,8 +4,6 @@ package run
 import (
 	"context"
 	"database/sql"
-	"fmt"
-	"os"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -13,6 +11,7 @@ import (
 	// SQLite driver.
 	_ "github.com/mattn/go-sqlite3"
 
+	"open-replays/internal/api/config"
 	sqlite "open-replays/internal/api/db"
 	"open-replays/internal/api/http/router"
 	repodb "open-replays/internal/api/repository/sqlite"
@@ -24,15 +23,16 @@ import (
 func Run() error {
 	ctx := context.Background()
 
-	dbPath := os.Getenv("SQLITE_PATH")
-	if dbPath == "" {
-		dbPath = "db.sqlite3"
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	maxFileSize, err := cfg.Video.MaxFileSizeBytes()
+	if err != nil {
+		return err
 	}
 
-	// busy_timeout
-	dsn := fmt.Sprintf("file:%s?_busy_timeout=5000&_journal_mode=WAL", dbPath)
-
-	db, err := sql.Open("sqlite3", dsn)
+	db, err := sql.Open("sqlite3", cfg.Database.DSN())
 	if err != nil {
 		return err
 	}
@@ -47,11 +47,22 @@ func Run() error {
 	r := gin.Default()
 	r.Use(cors.Default())
 
-	localStorage := storage.NewLocalStorage("uploads", "http://localhost:8080/media")
+	localStorage := storage.NewLocalStorage(cfg.Storage.BaseDir, cfg.Storage.PublicURL)
 	videosRepo := repodb.NewVideosRepo(db)
 	thumbnailsService := usecase.NewMetadataService(localStorage)
-	videoProcessor := usecase.NewVideoProcessor(thumbnailsService, videosRepo, localStorage, 2)
-	videosUC := usecase.NewVideosService(videosRepo, localStorage, videoProcessor)
+	videoProcessor := usecase.NewVideoProcessor(
+		thumbnailsService,
+		videosRepo,
+		localStorage,
+		cfg.Video.WorkerCount,
+	)
+	videosUC := usecase.NewVideosService(
+		videosRepo,
+		localStorage,
+		videoProcessor,
+		maxFileSize,
+		cfg.Video.AllowedExtensions,
+	)
 
 	router.Register(r, videosUC)
 

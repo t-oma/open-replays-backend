@@ -14,25 +14,13 @@ import (
 	"open-replays/internal/api/repository/repoiface"
 )
 
-const (
-	// MEGABYTE represents one megabyte in bytes.
-	MEGABYTE = 1024 * 1024
-	// MaxFileSize represents the maximum allowed file size.
-	MaxFileSize = 100 * MEGABYTE
-)
-
-// AllowedExtensions is a map of all allowed extensions.
-var AllowedExtensions = map[string]bool{
-	".mp4":  true,
-	".webm": true,
-	".mov":  true,
-}
-
 // VideosService is a service for videos.
 type VideosService struct {
-	repo      repoiface.VideosRepository
-	storage   repoiface.StorageService
-	processor *VideoProcessor
+	repo              repoiface.VideosRepository
+	storage           repoiface.StorageService
+	processor         *VideoProcessor
+	maxFileSize       int64
+	allowedExtensions map[string]bool
 }
 
 // NewVideosService creates a new VideosService.
@@ -40,11 +28,20 @@ func NewVideosService(
 	repo repoiface.VideosRepository,
 	storage repoiface.StorageService,
 	processor *VideoProcessor,
+	maxFileSize int64,
+	allowedExtensions []string,
 ) *VideosService {
+	extMap := make(map[string]bool, len(allowedExtensions))
+	for _, ext := range allowedExtensions {
+		extMap[ext] = true
+	}
+
 	return &VideosService{
-		repo:      repo,
-		storage:   storage,
-		processor: processor,
+		repo:              repo,
+		storage:           storage,
+		processor:         processor,
+		maxFileSize:       maxFileSize,
+		allowedExtensions: extMap,
 	}
 }
 
@@ -80,10 +77,10 @@ func (s *VideosService) GetByID(ctx context.Context, params GetByIDParams) (*dom
 // Upload uploads a video.
 func (s *VideosService) Upload(ctx context.Context, params UploadParams) (*domain.Video, error) {
 	ext := filepath.Ext(params.File.Filename)
-	if !AllowedExtensions[ext] {
+	if !s.allowedExtensions[ext] {
 		return nil, domain.ErrInvalidFileType
 	}
-	if params.File.Size > MaxFileSize {
+	if params.File.Size > s.maxFileSize {
 		return nil, domain.ErrFileTooLarge
 	}
 	if params.Title == "" {
