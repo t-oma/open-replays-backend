@@ -5,12 +5,14 @@ import (
 	"mime/multipart"
 )
 
-// APIResponse is the standard response format for all API endpoints.
-type APIResponse struct {
-	Success bool   `json:"success"`
+type ErrorResponse struct {
+	Error   string `json:"error"`
 	Message string `json:"message,omitempty"`
-	Data    any    `json:"data,omitempty"`
-	Error   string `json:"error,omitempty"`
+}
+
+type SuccessResponse[T any] struct {
+	Data    T      `json:"data"`
+	Message string `json:"message,omitempty"`
 }
 
 // ListVideosRequest is the request for listing videos.
@@ -83,4 +85,14 @@ type PaginationDTO struct {
 	// PageSize int  `json:"pageSize"`
 	// Total    int  `json:"total"`
 	// HasNext  bool `json:"hasNext"`
+}
+
+// UploadVideoResponse is the response for uploading a video containing the ID of the uploaded video.
+type UploadVideoResponse struct {
+	ID string `json:"id"`
+}
+
+// DeleteVideoResponse is the response for deleting a video containing the ID of the deleted video.
+type DeleteVideoResponse struct {
+	ID string `json:"id"`
 }

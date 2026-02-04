@@ -26,8 +26,8 @@ func NewVideosHandler(service *usecase.VideosService) *VideosHandler {
 func (h *VideosHandler) List(c *gin.Context) {
 	videos, err := h.service.List(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, APIResponse{
-			Success: false, Error: "internal server error",
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error: "internal server error",
 		})
 		return
 	}
@@ -43,8 +43,8 @@ func (h *VideosHandler) List(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, APIResponse{
-		Success: true, Data: gin.H{"videos": summaries},
+	c.JSON(http.StatusOK, SuccessResponse[[]VideoSummaryDTO]{
+		Data: summaries,
 	})
 }
 
@@ -52,8 +52,8 @@ func (h *VideosHandler) List(c *gin.Context) {
 func (h *VideosHandler) GetByID(c *gin.Context) {
 	var req GetVideoRequest
 	if err := c.ShouldBindUri(&req); err != nil {
-		c.JSON(http.StatusBadRequest, APIResponse{
-			Success: false, Error: err.Error(),
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error: err.Error(),
 		})
 		return
 	}
@@ -63,12 +63,12 @@ func (h *VideosHandler) GetByID(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrVideoNotFound) || errors.Is(err, sql.ErrNoRows):
-			c.JSON(http.StatusNotFound, APIResponse{
-				Success: false, Error: domain.ErrVideoNotFound.Error(),
+			c.JSON(http.StatusNotFound, ErrorResponse{
+				Error: domain.ErrVideoNotFound.Error(),
 			})
 		default:
-			c.JSON(http.StatusInternalServerError, APIResponse{
-				Success: false, Error: "internal error",
+			c.JSON(http.StatusInternalServerError, ErrorResponse{
+				Error: "internal error",
 			})
 		}
 		return
@@ -87,8 +87,8 @@ func (h *VideosHandler) GetByID(c *gin.Context) {
 		UploadedAt:   video.UploadedAt.Format(time.RFC3339),
 	}
 
-	c.JSON(http.StatusOK, APIResponse{
-		Success: true, Data: detail,
+	c.JSON(http.StatusOK, SuccessResponse[VideoDetailDTO]{
+		Data: detail,
 	})
 }
 
@@ -96,8 +96,8 @@ func (h *VideosHandler) GetByID(c *gin.Context) {
 func (h *VideosHandler) Upload(c *gin.Context) {
 	var req UploadVideoRequest
 	if err := c.ShouldBind(&req); err != nil {
-		c.JSON(http.StatusBadRequest, APIResponse{
-			Success: false, Error: err.Error(),
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error: err.Error(),
 		})
 		return
 	}
@@ -112,27 +112,27 @@ func (h *VideosHandler) Upload(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrInvalidFileType):
-			c.JSON(http.StatusBadRequest, APIResponse{
-				Success: false, Error: domain.ErrInvalidFileType.Error(),
+			c.JSON(http.StatusBadRequest, ErrorResponse{
+				Error: domain.ErrInvalidFileType.Error(),
 			})
 		case errors.Is(err, domain.ErrFileTooLarge):
-			c.JSON(http.StatusBadRequest, APIResponse{
-				Success: false, Error: domain.ErrFileTooLarge.Error(),
+			c.JSON(http.StatusBadRequest, ErrorResponse{
+				Error: domain.ErrFileTooLarge.Error(),
 			})
 		case errors.Is(err, domain.ErrValidation):
-			c.JSON(http.StatusBadRequest, APIResponse{
-				Success: false, Error: domain.ErrValidation.Error(),
+			c.JSON(http.StatusBadRequest, ErrorResponse{
+				Error: domain.ErrValidation.Error(),
 			})
 		default:
-			c.JSON(http.StatusInternalServerError, APIResponse{
-				Success: false, Error: "internal server error",
+			c.JSON(http.StatusInternalServerError, ErrorResponse{
+				Error: "internal server error",
 			})
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, APIResponse{
-		Success: true, Data: gin.H{"id": video.ID}, Message: "File uploaded successfully",
+	c.JSON(http.StatusOK, SuccessResponse[UploadVideoResponse]{
+		Data: UploadVideoResponse{ID: video.ID}, Message: "File uploaded successfully",
 	})
 }
 
@@ -140,8 +140,8 @@ func (h *VideosHandler) Upload(c *gin.Context) {
 func (h *VideosHandler) Delete(c *gin.Context) {
 	var req DeleteVideoRequest
 	if err := c.ShouldBindUri(&req); err != nil {
-		c.JSON(http.StatusBadRequest, APIResponse{
-			Success: false, Error: err.Error(),
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error: err.Error(),
 		})
 		return
 	}
@@ -149,14 +149,14 @@ func (h *VideosHandler) Delete(c *gin.Context) {
 	deleteParams := usecase.DeleteParams{ID: req.ID}
 	err := h.service.Delete(c.Request.Context(), deleteParams)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, APIResponse{
-			Success: false, Error: "internal server error",
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error: "internal server error",
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, APIResponse{
-		Success: true,
-		Message: "File deleted successfully",
+	c.JSON(http.StatusOK, SuccessResponse[DeleteVideoResponse]{
+		Data:    DeleteVideoResponse{ID: req.ID},
+		Message: "Video deleted successfully",
 	})
 }
