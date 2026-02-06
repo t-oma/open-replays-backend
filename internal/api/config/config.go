@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
+
+	"open-replays/internal/pkg/parse"
 )
 
 // Config holds all application configuration.
@@ -46,7 +48,7 @@ type VideoConfig struct {
 
 // MaxFileSizeBytes returns the max file size in bytes.
 func (v VideoConfig) MaxFileSizeBytes() (int64, error) {
-	return parseFileSize(v.MaxFileSize)
+	return parse.FileSizeToBytes(v.MaxFileSize)
 }
 
 // LogConfig holds logging configuration.
@@ -109,31 +111,4 @@ func (d DatabaseConfig) DSN() string {
 		d.Path,
 		d.BusyTimeout.Milliseconds(),
 		d.JournalMode)
-}
-
-// parseFileSize parses a human-readable file size string (e.g., "10MB", "1GB").
-func parseFileSize(s string) (int64, error) {
-	if s == "" {
-		return 0, nil
-	}
-
-	var multiplier int64 = 1
-	switch {
-	case len(s) > 2 && (s[len(s)-2:] == "GB" || s[len(s)-2:] == "gb"):
-		multiplier = 1024 * 1024 * 1024
-		s = s[:len(s)-2]
-	case len(s) > 2 && (s[len(s)-2:] == "MB" || s[len(s)-2:] == "mb"):
-		multiplier = 1024 * 1024
-		s = s[:len(s)-2]
-	case len(s) > 2 && (s[len(s)-2:] == "KB" || s[len(s)-2:] == "kb"):
-		multiplier = 1024
-		s = s[:len(s)-2]
-	}
-
-	var value int64
-	if _, err := fmt.Sscanf(s, "%d", &value); err != nil {
-		return 0, fmt.Errorf("invalid file size format: %s", s)
-	}
-
-	return value * multiplier, nil
 }
