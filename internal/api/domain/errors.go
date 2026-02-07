@@ -13,3 +13,23 @@ var (
 	// ErrFileTooLarge represents a file too large error.
 	ErrFileTooLarge = errors.New("file too large: max 100MB")
 )
+
+// IsNotFound checks if an error is a not found error.
+func IsNotFound(err error) bool {
+	return errors.Is(err, ErrVideoNotFound)
+}
+
+// IsValidationError checks if an error is a validation error.
+func IsValidationError(err error) bool {
+	return errors.Is(err, ErrValidation)
+}
+
+// IsInvalidFileType checks if an error is an invalid file type error.
+func IsInvalidFileType(err error) bool {
+	return errors.Is(err, ErrInvalidFileType)
+}
+
+// IsFileTooLarge checks if an error is a file too large error.
+func IsFileTooLarge(err error) bool {
+	return errors.Is(err, ErrFileTooLarge)
+}

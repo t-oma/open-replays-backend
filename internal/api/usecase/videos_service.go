@@ -3,6 +3,8 @@ package usecase
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"mime/multipart"
@@ -66,6 +68,9 @@ func (s *VideosService) List(ctx context.Context) ([]domain.Video, error) {
 // GetByID gets a video by ID.
 func (s *VideosService) GetByID(ctx context.Context, params GetByIDParams) (*domain.Video, error) {
 	video, err := s.repo.GetByID(ctx, params.ID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, domain.ErrVideoNotFound
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -134,6 +139,9 @@ func (s *VideosService) Upload(ctx context.Context, params UploadParams) (*domai
 // Delete deletes a video.
 func (s *VideosService) Delete(ctx context.Context, params DeleteParams) error {
 	video, err := s.GetByID(ctx, GetByIDParams(params))
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.ErrVideoNotFound
+	}
 	if err != nil {
 		return err
 	}

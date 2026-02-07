@@ -5,16 +5,6 @@ import (
 	"mime/multipart"
 )
 
-type ErrorResponse struct {
-	Error   string `json:"error"`
-	Message string `json:"message,omitempty"`
-}
-
-type SuccessResponse[T any] struct {
-	Data    T      `json:"data"`
-	Message string `json:"message,omitempty"`
-}
-
 // ListVideosRequest is the request for listing videos.
 type ListVideosRequest struct{}
 
