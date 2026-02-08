@@ -15,18 +15,18 @@ import (
 
 // VideosHandler is a handler for videos.
 type VideosHandler struct {
-	service   *usecase.VideosService
-	validator validation.VideoValidator
+	service *usecase.VideosService
+	rules   validation.VideoRules
 }
 
 // NewVideosHandler creates a new VideosHandler.
 func NewVideosHandler(
 	service *usecase.VideosService,
-	validator validation.VideoValidator,
+	rules validation.VideoRules,
 ) *VideosHandler {
 	return &VideosHandler{
-		service:   service,
-		validator: validator,
+		service: service,
+		rules:   rules,
 	}
 }
 
@@ -96,8 +96,36 @@ func (h *VideosHandler) Upload(c *gin.Context) {
 		return
 	}
 
-	if validationErrors := h.validator.ValidateUpload(&req); len(validationErrors) > 0 {
-		response.ValidationFailed(c, validationErrors)
+	// Validate using fluent API
+	var errors []response.ValidationError
+
+	errors = append(errors, validation.String("title", req.Title).
+		Required().
+		MinLength(h.rules.MinTitleLength).
+		MaxLength(h.rules.MaxTitleLength).
+		Errors()...)
+
+	errors = append(errors, validation.String("description", req.Description).
+		Optional().
+		MaxLength(h.rules.MaxDescriptionLength).
+		Errors()...)
+
+	errors = append(errors, validation.File("video", req.Video).
+		Required().
+		MinSize(h.rules.MinVideoSize).
+		MaxSize(h.rules.MaxVideoSize).
+		AllowedExts(h.rules.AllowedVideoExts).
+		Errors()...)
+
+	errors = append(errors, validation.File("thumbnail", req.Thumbnail).
+		Optional().
+		MinSize(h.rules.MinThumbnailSize).
+		MaxSize(h.rules.MaxThumbnailSize).
+		AllowedExts(h.rules.AllowedThumbnailExts).
+		Errors()...)
+
+	if len(errors) > 0 {
+		response.ValidationFailed(c, errors)
 		return
 	}
 

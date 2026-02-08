@@ -58,8 +58,6 @@ func Run() error {
 	r := gin.Default()
 	r.Use(cors.Default())
 
-	videoValidator := validation.NewVideoValidator()
-
 	localStorage := storage.NewLocalStorage(cfg.Storage.BaseDir, cfg.Storage.PublicURL)
 	videosRepo := repodb.NewVideosRepo(db)
 	thumbnailsService := usecase.NewMetadataService(localStorage)
@@ -74,7 +72,7 @@ func Run() error {
 		localStorage,
 		videoProcessor,
 	)
-	videosHandler := v1.NewVideosHandler(videosService, videoValidator)
+	videosHandler := v1.NewVideosHandler(videosService, validation.DefaultValidationRules())
 
 	router.Register(r, videosHandler)
 

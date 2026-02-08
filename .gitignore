@@ -19,3 +19,5 @@ uploads/thumbnails/*
 *.o
 
 api
+!api/
+main
