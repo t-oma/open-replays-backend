@@ -98,7 +98,7 @@ func (h *VideosHandler) Upload(c *gin.Context) {
 	if err != nil {
 		// Check for validation errors with details
 		if fieldsErr, ok := domain.IsMultiFieldError(err); ok {
-			errResp := httperr.ErrValidation.WithDetails(fieldsErr.Errors)
+			errResp := httperr.ErrFieldValidation.WithDetails(fieldsErr.Errors)
 			response.Error(c, errResp)
 			return
 		}
