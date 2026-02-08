@@ -7,7 +7,6 @@ import (
 	"errors"
 	"log/slog"
 	"mime/multipart"
-	"path/filepath"
 	"sort"
 	"time"
 
@@ -17,11 +16,9 @@ import (
 
 // VideosService is a service for videos.
 type VideosService struct {
-	repo              repoiface.VideosRepository
-	storage           repoiface.StorageService
-	processor         *VideoProcessor
-	maxFileSize       int64
-	allowedExtensions map[string]bool
+	repo      repoiface.VideosRepository
+	storage   repoiface.StorageService
+	processor *VideoProcessor
 }
 
 // NewVideosService creates a new VideosService.
@@ -29,20 +26,11 @@ func NewVideosService(
 	repo repoiface.VideosRepository,
 	storage repoiface.StorageService,
 	processor *VideoProcessor,
-	maxFileSize int64,
-	allowedExtensions []string,
 ) *VideosService {
-	extMap := make(map[string]bool, len(allowedExtensions))
-	for _, ext := range allowedExtensions {
-		extMap[ext] = true
-	}
-
 	return &VideosService{
-		repo:              repo,
-		storage:           storage,
-		processor:         processor,
-		maxFileSize:       maxFileSize,
-		allowedExtensions: extMap,
+		repo:      repo,
+		storage:   storage,
+		processor: processor,
 	}
 }
 
@@ -80,49 +68,10 @@ func (s *VideosService) GetByID(ctx context.Context, params GetByIDParams) (*dom
 
 // Upload uploads a video.
 func (s *VideosService) Upload(ctx context.Context, params UploadParams) (*domain.Video, error) {
-	var fieldsValidationErr domain.MultiFieldError
-
-	if params.Title == "" {
-		fieldsValidationErr.Errors = append(fieldsValidationErr.Errors, domain.FieldError{
-			Field:   "title",
-			Message: "title is required",
-		})
-	}
-	if params.File == nil {
-		fieldsValidationErr.Errors = append(fieldsValidationErr.Errors, domain.FieldError{
-			Field:   "video",
-			Message: "video is required",
-		})
-		// If video file not found then we can't go further
-		return nil, fieldsValidationErr
-	}
-
-	ext := filepath.Ext(params.File.Filename)
-	if !s.allowedExtensions[ext] {
-		return nil, domain.FileTypeError{
-			AllowedTypes: s.getAllowedExtensionsList(),
-			ActualType:   ext,
-			Filename:     params.File.Filename,
-		}
-	}
-
-	if params.File.Size > s.maxFileSize {
-		return nil, domain.FileSizeError{
-			MaxSize:      s.maxFileSize,
-			MaxSizeMB:    int(s.maxFileSize / (1024 * 1024)),
-			ActualSize:   params.File.Size,
-			ActualSizeMB: float64(params.File.Size) / (1024 * 1024),
-		}
-	}
-
-	if len(fieldsValidationErr.Errors) > 0 {
-		return nil, fieldsValidationErr
-	}
-
 	video := domain.Video{
 		Title:       params.Title,
 		Description: params.Description,
-		Extension:   ext,
+		Extension:   params.Ext,
 		Duration:    0,
 		Views:       0,
 		UploadedAt:  time.Now(),
@@ -144,7 +93,7 @@ func (s *VideosService) Upload(ctx context.Context, params UploadParams) (*domai
 	if s.shouldGenerateThumbnail(params.Thumbnail) {
 		s.processor.Enqueue(ProcessingJob{
 			VideoID:  savedVideo.ID,
-			VideoExt: ext,
+			VideoExt: params.Ext,
 		})
 		slog.Info("thumbnail generation queued", "video_id", savedVideo.ID)
 	} else {
@@ -191,13 +140,4 @@ func (s *VideosService) Delete(ctx context.Context, params DeleteParams) error {
 
 func (s *VideosService) shouldGenerateThumbnail(thumbnail *multipart.FileHeader) bool {
 	return thumbnail == nil || thumbnail.Size == 0
-}
-
-// getAllowedExtensionsList returns a list of allowed file extensions.
-func (s *VideosService) getAllowedExtensionsList() []string {
-	exts := make([]string, 0, len(s.allowedExtensions))
-	for ext := range s.allowedExtensions {
-		exts = append(exts, ext)
-	}
-	return exts
 }

@@ -77,11 +77,9 @@ func Run() error {
 		videosRepo,
 		localStorage,
 		videoProcessor,
-		maxFileSize,
-		cfg.Video.AllowedExtensions,
 	)
 
-	router.Register(r, videosUC)
+	router.Register(r, videosUC, maxFileSize, cfg.Video.AllowedExtensions)
 
-	return r.Run(":8080")
+	return r.Run(cfg.Server.Address())
 }

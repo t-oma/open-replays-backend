@@ -2,24 +2,33 @@
 package v1
 
 import (
+	"path/filepath"
 	"time"
 
 	"github.com/gin-gonic/gin"
 
 	"open-replays/internal/api/domain"
-	"open-replays/internal/api/httperr"
+	"open-replays/internal/api/http/validator"
 	"open-replays/internal/api/response"
 	"open-replays/internal/api/usecase"
 )
 
 // VideosHandler is a handler for videos.
 type VideosHandler struct {
-	service *usecase.VideosService
+	service   *usecase.VideosService
+	validator *validator.UploadValidator
 }
 
 // NewVideosHandler creates a new VideosHandler.
-func NewVideosHandler(service *usecase.VideosService) *VideosHandler {
-	return &VideosHandler{service: service}
+func NewVideosHandler(
+	service *usecase.VideosService,
+	maxFileSize int64,
+	allowedExts []string,
+) *VideosHandler {
+	return &VideosHandler{
+		service:   service,
+		validator: validator.NewUploadValidator(maxFileSize, allowedExts),
+	}
 }
 
 // List lists all videos.
@@ -88,35 +97,27 @@ func (h *VideosHandler) Upload(c *gin.Context) {
 		return
 	}
 
+	// Validate title
+	if validationResult := h.validator.ValidateTitle(req.Title); !validationResult.IsValid() {
+		response.Error(c, validationResult.ToError())
+		return
+	}
+
+	// Validate video file
+	if err := h.validator.ValidateFile(req.Video); err != nil {
+		response.Error(c, err)
+		return
+	}
+
 	uploadParams := usecase.UploadParams{
 		File:        req.Video,
 		Title:       req.Title,
 		Description: req.Description,
 		Thumbnail:   req.Thumbnail,
+		Ext:         filepath.Ext(req.Video.Filename),
 	}
 	video, err := h.service.Upload(c.Request.Context(), uploadParams)
 	if err != nil {
-		// Check for validation errors with details
-		if fieldsErr, ok := domain.IsMultiFieldError(err); ok {
-			errResp := httperr.ErrFieldValidation.WithDetails(fieldsErr.Errors)
-			response.Error(c, errResp)
-			return
-		}
-
-		// Check for file size error with details
-		if fileSizeErr, ok := domain.IsFileSizeError(err); ok {
-			errResp := httperr.ErrFileTooLarge.WithDetails(fileSizeErr)
-			response.Error(c, errResp)
-			return
-		}
-
-		// Check for file type error with details
-		if fileTypeErr, ok := domain.IsFileTypeError(err); ok {
-			errResp := httperr.ErrInvalidFileType.WithDetails(fileTypeErr)
-			response.Error(c, errResp)
-			return
-		}
-
 		response.InternalError(c, err)
 		return
 	}

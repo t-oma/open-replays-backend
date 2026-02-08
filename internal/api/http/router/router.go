@@ -9,11 +9,16 @@ import (
 )
 
 // Register registers all HTTP routes.
-func Register(r *gin.Engine, videosService *usecase.VideosService) {
+func Register(
+	r *gin.Engine,
+	videosService *usecase.VideosService,
+	maxFileSize int64,
+	allowedExtensions []string,
+) {
 	api := r.Group("/api")
 	v1g := api.Group("/v1")
 
-	h := v1.NewVideosHandler(videosService)
+	h := v1.NewVideosHandler(videosService, maxFileSize, allowedExtensions)
 	v1g.GET("/videos", h.List)
 	v1g.GET("/videos/:id", h.GetByID)
 	v1g.POST("/videos/upload", h.Upload)
