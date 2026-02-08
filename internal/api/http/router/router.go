@@ -5,23 +5,19 @@ import (
 	"github.com/gin-gonic/gin"
 
 	v1 "open-replays/internal/api/http/v1"
-	"open-replays/internal/api/usecase"
 )
 
 // Register registers all HTTP routes.
 func Register(
 	r *gin.Engine,
-	videosService *usecase.VideosService,
-	maxFileSize int64,
-	allowedExtensions []string,
+	videosHandler *v1.VideosHandler,
 ) {
 	api := r.Group("/api")
 	v1g := api.Group("/v1")
 
-	h := v1.NewVideosHandler(videosService, maxFileSize, allowedExtensions)
-	v1g.GET("/videos", h.List)
-	v1g.GET("/videos/:id", h.GetByID)
-	v1g.POST("/videos/upload", h.Upload)
+	v1g.GET("/videos", videosHandler.List)
+	v1g.GET("/videos/:id", videosHandler.GetByID)
+	v1g.POST("/videos/upload", videosHandler.Upload)
 
 	r.Static("/media", "./uploads")
 }

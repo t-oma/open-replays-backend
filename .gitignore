@@ -11,3 +11,11 @@ uploads/thumbnails/*
 .idea
 .vscode
 .DS_Store
+
+*.obj
+*.lib
+*.dll
+*.so
+*.o
+
+api

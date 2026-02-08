@@ -8,26 +8,25 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"open-replays/internal/api/domain"
-	"open-replays/internal/api/http/validator"
 	"open-replays/internal/api/response"
 	"open-replays/internal/api/usecase"
+	"open-replays/internal/api/validation"
 )
 
 // VideosHandler is a handler for videos.
 type VideosHandler struct {
 	service   *usecase.VideosService
-	validator *validator.UploadValidator
+	validator validation.VideoValidator
 }
 
 // NewVideosHandler creates a new VideosHandler.
 func NewVideosHandler(
 	service *usecase.VideosService,
-	maxFileSize int64,
-	allowedExts []string,
+	validator validation.VideoValidator,
 ) *VideosHandler {
 	return &VideosHandler{
 		service:   service,
-		validator: validator.NewUploadValidator(maxFileSize, allowedExts),
+		validator: validator,
 	}
 }
 
@@ -97,15 +96,8 @@ func (h *VideosHandler) Upload(c *gin.Context) {
 		return
 	}
 
-	// Validate title
-	if validationResult := h.validator.ValidateTitle(req.Title); !validationResult.IsValid() {
-		response.Error(c, validationResult.ToError())
-		return
-	}
-
-	// Validate video file
-	if err := h.validator.ValidateFile(req.Video); err != nil {
-		response.Error(c, err)
+	if validationErrors := h.validator.ValidateUpload(&req); len(validationErrors) > 0 {
+		response.ValidationFailed(c, validationErrors)
 		return
 	}
 

@@ -61,8 +61,14 @@ func ErrorFromError(c *gin.Context, err error) {
 func BadRequest(c *gin.Context, message string, details ...any) {
 	err := httperr.New(httperr.ErrCodeInvalidRequest, message, http.StatusBadRequest)
 	if len(details) > 0 {
-		err.WithDetails(details[0])
+		err = err.WithDetails(details[0])
 	}
+	Error(c, err)
+}
+
+// ValidationFailed sends a 400 Bad Request error with validation errors.
+func ValidationFailed(c *gin.Context, details any) {
+	err := httperr.ErrValidation.WithDetails(details)
 	Error(c, err)
 }
 
