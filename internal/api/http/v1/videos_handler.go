@@ -10,7 +10,6 @@ import (
 	"open-replays/internal/api/httperr"
 	"open-replays/internal/api/response"
 	"open-replays/internal/api/usecase"
-	"open-replays/internal/pkg/parse"
 )
 
 // VideosHandler is a handler for videos.
@@ -97,24 +96,28 @@ func (h *VideosHandler) Upload(c *gin.Context) {
 	}
 	video, err := h.service.Upload(c.Request.Context(), uploadParams)
 	if err != nil {
-		switch {
-		case domain.IsValidationError(err):
-			errResp := httperr.ErrValidation.WithDetails(err.Error())
+		// Check for validation errors with details
+		if fieldsErr, ok := domain.IsMultiFieldError(err); ok {
+			errResp := httperr.ErrValidation.WithDetails(fieldsErr.Errors)
 			response.Error(c, errResp)
-
-		case domain.IsFileTooLarge(err):
-			errResp := httperr.ErrFileTooLarge.WithDetails(map[string]any{
-				"max_size_mb":      "100MB",
-				"uploaded_size_mb": parse.FileSizeToHumanReadable(req.Video.Size),
-			})
-			response.Error(c, errResp)
-
-		case domain.IsInvalidFileType(err):
-			response.Error(c, httperr.ErrInvalidFileType)
-
-		default:
-			response.InternalError(c, err)
+			return
 		}
+
+		// Check for file size error with details
+		if fileSizeErr, ok := domain.IsFileSizeError(err); ok {
+			errResp := httperr.ErrFileTooLarge.WithDetails(fileSizeErr)
+			response.Error(c, errResp)
+			return
+		}
+
+		// Check for file type error with details
+		if fileTypeErr, ok := domain.IsFileTypeError(err); ok {
+			errResp := httperr.ErrInvalidFileType.WithDetails(fileTypeErr)
+			response.Error(c, errResp)
+			return
+		}
+
+		response.InternalError(c, err)
 		return
 	}
 

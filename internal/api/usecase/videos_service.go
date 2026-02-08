@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"log/slog"
 	"mime/multipart"
 	"path/filepath"
@@ -81,15 +80,43 @@ func (s *VideosService) GetByID(ctx context.Context, params GetByIDParams) (*dom
 
 // Upload uploads a video.
 func (s *VideosService) Upload(ctx context.Context, params UploadParams) (*domain.Video, error) {
+	var fieldsValidationErr domain.MultiFieldError
+
+	if params.Title == "" {
+		fieldsValidationErr.Errors = append(fieldsValidationErr.Errors, domain.FieldError{
+			Field:   "title",
+			Message: "title is required",
+		})
+	}
+	if params.File == nil {
+		fieldsValidationErr.Errors = append(fieldsValidationErr.Errors, domain.FieldError{
+			Field:   "video",
+			Message: "video is required",
+		})
+		// If video file not found then we can't go further
+		return nil, fieldsValidationErr
+	}
+
 	ext := filepath.Ext(params.File.Filename)
 	if !s.allowedExtensions[ext] {
-		return nil, domain.ErrInvalidFileType
+		return nil, domain.FileTypeError{
+			AllowedTypes: s.getAllowedExtensionsList(),
+			ActualType:   ext,
+			Filename:     params.File.Filename,
+		}
 	}
+
 	if params.File.Size > s.maxFileSize {
-		return nil, domain.ErrFileTooLarge
+		return nil, domain.FileSizeError{
+			MaxSize:      s.maxFileSize,
+			MaxSizeMB:    int(s.maxFileSize / (1024 * 1024)),
+			ActualSize:   params.File.Size,
+			ActualSizeMB: float64(params.File.Size) / (1024 * 1024),
+		}
 	}
-	if params.Title == "" {
-		return nil, domain.ErrValidation
+
+	if len(fieldsValidationErr.Errors) > 0 {
+		return nil, fieldsValidationErr
 	}
 
 	video := domain.Video{
@@ -103,7 +130,7 @@ func (s *VideosService) Upload(ctx context.Context, params UploadParams) (*domai
 
 	savedVideo, err := s.repo.Create(ctx, video)
 	if err != nil {
-		return nil, fmt.Errorf("create video record: %w", err)
+		return nil, domain.ErrInternal
 	}
 
 	videoKey := savedVideo.GetVideoKey() // "videos/{id}{ext}"
@@ -111,7 +138,7 @@ func (s *VideosService) Upload(ctx context.Context, params UploadParams) (*domai
 	if err = s.storage.Save(ctx, params.File, videoKey); err != nil {
 		// Rollback: delete video record
 		_ = s.repo.Delete(ctx, savedVideo.ID)
-		return nil, fmt.Errorf("save file: %w", err)
+		return nil, domain.ErrInternal
 	}
 
 	if s.shouldGenerateThumbnail(params.Thumbnail) {
@@ -164,4 +191,13 @@ func (s *VideosService) Delete(ctx context.Context, params DeleteParams) error {
 
 func (s *VideosService) shouldGenerateThumbnail(thumbnail *multipart.FileHeader) bool {
 	return thumbnail == nil || thumbnail.Size == 0
+}
+
+// getAllowedExtensionsList returns a list of allowed file extensions.
+func (s *VideosService) getAllowedExtensionsList() []string {
+	exts := make([]string, 0, len(s.allowedExtensions))
+	for ext := range s.allowedExtensions {
+		exts = append(exts, ext)
+	}
+	return exts
 }

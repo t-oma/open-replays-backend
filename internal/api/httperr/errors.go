@@ -12,15 +12,13 @@ type ErrorCode string
 // Common error codes.
 const (
 	// Validation errors.
-	ErrCodeValidation     ErrorCode = "VALIDATION_ERROR"
-	ErrCodeInvalidRequest ErrorCode = "INVALID_REQUEST"
-	ErrCodeMissingField   ErrorCode = "MISSING_FIELD"
-	ErrCodeInvalidFormat  ErrorCode = "INVALID_FORMAT"
+	ErrCodeValidation       ErrorCode = "VALIDATION_ERROR"
+	ErrCodeInvalidRequest   ErrorCode = "INVALID_REQUEST"
+	ErrCodeFieldsValidation ErrorCode = "FIELDS_VALIDATION_ERROR"
 
 	// File upload errors.
 	ErrCodeFileTooLarge    ErrorCode = "FILE_TOO_LARGE"
 	ErrCodeInvalidFileType ErrorCode = "INVALID_FILE_TYPE"
-	ErrCodeUploadFailed    ErrorCode = "UPLOAD_FAILED"
 	ErrCodeFileNotFound    ErrorCode = "FILE_NOT_FOUND"
 
 	// Resource errors.
@@ -80,7 +78,12 @@ func (e *AppError) WithDetails(details any) *AppError {
 // Predefined errors for common use cases.
 var (
 	// Validation.
-	ErrValidation     = New(ErrCodeValidation, "Validation failed", http.StatusBadRequest)
+	ErrValidation      = New(ErrCodeValidation, "Validation failed", http.StatusBadRequest)
+	ErrFieldValidation = New(
+		ErrCodeFieldsValidation,
+		"Fields validation failed",
+		http.StatusBadRequest,
+	)
 	ErrInvalidRequest = New(ErrCodeInvalidRequest, "Invalid request", http.StatusBadRequest)
 
 	// File errors.

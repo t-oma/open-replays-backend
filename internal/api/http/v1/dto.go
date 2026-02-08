@@ -10,25 +10,25 @@ type ListVideosRequest struct{}
 
 // GetVideoRequest is the request for getting a video by ID.
 type GetVideoRequest struct {
-	ID string `uri:"id"`
+	ID string `uri:"id" binding:"required"`
 }
 
 // UploadVideoRequest is the request for uploading a video.
 type UploadVideoRequest struct {
-	Title       string                `form:"title"`
+	Title       string                `form:"title"       binding:"required"`
 	Description string                `form:"description"`
-	Video       *multipart.FileHeader `form:"video"`
+	Video       *multipart.FileHeader `form:"video"       binding:"required"`
 	Thumbnail   *multipart.FileHeader `form:"thumbnail"`
 }
 
 // DeleteVideoRequest is the request for deleting a video.
 type DeleteVideoRequest struct {
-	ID string `uri:"id"`
+	ID string `uri:"id" binding:"required"`
 }
 
 // WatchVideoRequest is the request for watching a video.
 type WatchVideoRequest struct {
-	ID string `uri:"id"`
+	ID string `uri:"id" binding:"required"`
 }
 
 // VideoSummaryDTO is a summary representation of a video for list views.
