@@ -14,10 +14,7 @@ storage:
 video:
   worker-count: 2
   max-file-size: 100MB
-  allowed-extensions:
-    - .mp4
-    - .webm
-    - .mov
+  allowed-extensions: [.mp4, .webm, .mov]
 
 log:
   level: info
