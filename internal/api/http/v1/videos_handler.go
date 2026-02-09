@@ -103,26 +103,26 @@ func (h *VideosHandler) Upload(c *gin.Context) {
 		Required().
 		MinLength(h.rules.MinTitleLength).
 		MaxLength(h.rules.MaxTitleLength).
-		Errors()...)
+		Collect()...)
 
 	errors = append(errors, validation.String("description", req.Description).
 		Optional().
 		MaxLength(h.rules.MaxDescriptionLength).
-		Errors()...)
+		Collect()...)
 
 	errors = append(errors, validation.File("video", req.Video).
 		Required().
 		MinSize(h.rules.MinVideoSize).
 		MaxSize(h.rules.MaxVideoSize).
 		AllowedExts(h.rules.AllowedVideoExts).
-		Errors()...)
+		Collect()...)
 
 	errors = append(errors, validation.File("thumbnail", req.Thumbnail).
 		Optional().
 		MinSize(h.rules.MinThumbnailSize).
 		MaxSize(h.rules.MaxThumbnailSize).
 		AllowedExts(h.rules.AllowedThumbnailExts).
-		Errors()...)
+		Collect()...)
 
 	if len(errors) > 0 {
 		response.ValidationFailed(c, errors)

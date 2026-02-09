@@ -12,120 +12,103 @@ import (
 
 // FileValidator validates file uploads using fluent API.
 type FileValidator struct {
-	field          string
-	value          *multipart.FileHeader
-	errors         []response.ValidationError
-	skipValidation bool
+	base *baseValidator[*multipart.FileHeader]
 }
 
 // File creates a new file validator.
 func File(field string, file *multipart.FileHeader) *FileValidator {
 	return &FileValidator{
-		field:  field,
-		value:  file,
-		errors: make([]response.ValidationError, 0),
+		base: newBaseValidator(field, file),
 	}
 }
 
 // When conditionally applies validation only if the condition is true.
 func (v *FileValidator) When(condition bool) *FileValidator {
-	v.skipValidation = !condition
+	v.base.When(condition)
 	return v
 }
 
 // Optional skips validation if file is nil or empty.
 func (v *FileValidator) Optional() *FileValidator {
-	return v.When(v.value != nil && v.value.Size > 0)
+	return v.When(v.base.Value != nil && v.base.Value.Size > 0)
 }
 
 // Required checks if file is provided.
 func (v *FileValidator) Required() *FileValidator {
-	if v.skipValidation {
-		return v
-	}
-	if v.value == nil || v.value.Size <= 0 {
-		v.errors = append(v.errors, response.ValidationError{
-			Field:   v.field,
-			Message: v.field + " is required",
-			Tag:     TagRequired,
-		})
-	}
+	v.base.Required(v.base.Value != nil && v.base.Value.Size > 0)
 	return v
 }
 
 // MinSize checks minimum file size.
 func (v *FileValidator) MinSize(minLen int64) *FileValidator {
-	if v.skipValidation {
+	if v.base.SkipValidation {
 		return v
 	}
-	if v.value != nil && v.value.Size < minLen {
-		v.errors = append(v.errors, response.ValidationError{
-			Field:   v.field,
-			Message: v.field + " is too small",
-			Tag:     TagMinSize,
-			Details: response.FileSizeDetails{
+	if v.base.Value != nil && v.base.Value.Size < minLen {
+		v.base.AddError(
+			v.base.Field+" is too small",
+			response.TagMinFileSize,
+			response.FileSizeDetails{
 				MinSizeBytes:    minLen,
-				ActualSizeBytes: v.value.Size,
+				ActualSizeBytes: v.base.Value.Size,
 			},
-		})
+		)
 	}
 	return v
 }
 
 // MaxSize checks maximum file size.
 func (v *FileValidator) MaxSize(maxLen int64) *FileValidator {
-	if v.skipValidation {
+	if v.base.SkipValidation {
 		return v
 	}
-	if v.value != nil && v.value.Size > maxLen {
-		v.errors = append(v.errors, response.ValidationError{
-			Field:   v.field,
-			Message: fmt.Sprintf("%s must not exceed %s", v.field, formatSize(maxLen)),
-			Tag:     TagMaxSize,
-			Details: response.FileSizeDetails{
+	if v.base.Value != nil && v.base.Value.Size > maxLen {
+		v.base.AddError(
+			fmt.Sprintf("%s must not exceed %s", v.base.Field, formatSize(maxLen)),
+			response.TagMaxFileSize,
+			response.FileSizeDetails{
 				MaxSizeBytes:    maxLen,
-				ActualSizeBytes: v.value.Size,
+				ActualSizeBytes: v.base.Value.Size,
 			},
-		})
+		)
 	}
 	return v
 }
 
 // AllowedExts checks if file extension is allowed.
 func (v *FileValidator) AllowedExts(exts []string) *FileValidator {
-	if v.skipValidation {
+	if v.base.SkipValidation {
 		return v
 	}
-	if v.value == nil {
+	if v.base.Value == nil {
 		return v
 	}
 
-	ext := strings.ToLower(filepath.Ext(v.value.Filename))
+	ext := strings.ToLower(filepath.Ext(v.base.Value.Filename))
 	if slices.Contains(exts, ext) {
 		return v
 	}
 
-	v.errors = append(v.errors, response.ValidationError{
-		Field:   v.field,
-		Message: v.field + " has invalid format",
-		Tag:     TagInvalidFormat,
-		Details: response.FileTypeDetails{
+	v.base.AddError(
+		v.base.Field+" has invalid format",
+		response.TagInvalidFileFormat,
+		response.FileTypeDetails{
 			AllowedTypes: exts,
 			ActualType:   ext,
-			Filename:     v.value.Filename,
+			Filename:     v.base.Value.Filename,
 		},
-	})
+	)
 	return v
 }
 
-// Errors returns collected errors.
-func (v *FileValidator) Errors() []response.ValidationError {
-	return v.errors
+// Collect returns collected errors.
+func (v *FileValidator) Collect() []response.ValidationError {
+	return v.base.Collect()
 }
 
 // IsValid returns true if no errors.
 func (v *FileValidator) IsValid() bool {
-	return len(v.errors) == 0
+	return v.base.IsValid()
 }
 
 // formatSize formats bytes to human readable string.

@@ -1,11 +1,26 @@
 package response
 
+// ValidationTag represents the type of validation error.
+type ValidationTag string
+
+// Validation error tags.
+const (
+	TagRequired          ValidationTag = "required"
+	TagMinLength         ValidationTag = "min_length"
+	TagMaxLength         ValidationTag = "max_length"
+	TagMinFileSize       ValidationTag = "min_file_size"
+	TagMaxFileSize       ValidationTag = "max_file_size"
+	TagMinIntSize        ValidationTag = "min_int_size"
+	TagMaxIntSize        ValidationTag = "max_int_size"
+	TagInvalidFileFormat ValidationTag = "invalid_file_format"
+)
+
 // ValidationError represents validation error with optional details.
 type ValidationError struct {
-	Field   string `json:"field"`
-	Message string `json:"message"`
-	Tag     string `json:"tag"`
-	Details any    `json:"details,omitempty"`
+	Field   string        `json:"field"`
+	Message string        `json:"message"`
+	Tag     ValidationTag `json:"tag"`
+	Details any           `json:"details,omitempty"`
 }
 
 // FileTypeDetails contains file type validation details.
@@ -31,4 +46,12 @@ type LengthDetails struct {
 	MaxLength    int `json:"maxLength,omitempty"`
 	ActualLength int `json:"actualLength"`
 	ExceededBy   int `json:"exceededBy"`
+}
+
+// IntSizeDetails contains int64 size validation details.
+type IntSizeDetails struct {
+	MinSize    int64 `json:"minSize,omitempty"`
+	MaxSize    int64 `json:"maxSize,omitempty"`
+	ActualSize int64 `json:"actualSize"`
+	ExceededBy int64 `json:"exceededBy"`
 }
