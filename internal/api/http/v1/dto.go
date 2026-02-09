@@ -3,8 +3,6 @@ package v1
 
 import (
 	"mime/multipart"
-
-	"open-replays/internal/api/validation"
 )
 
 // ListVideosRequest is the request for listing videos.
@@ -21,28 +19,6 @@ type UploadVideoRequest struct {
 	Description string                `form:"description"`
 	Video       *multipart.FileHeader `form:"video"`
 	Thumbnail   *multipart.FileHeader `form:"thumbnail"`
-}
-
-var _ validation.UploadVideoRequest = (*UploadVideoRequest)(nil)
-
-// GetTitle returns the title of the video.
-func (r *UploadVideoRequest) GetTitle() string {
-	return r.Title
-}
-
-// GetDescription returns the description of the video.
-func (r *UploadVideoRequest) GetDescription() string {
-	return r.Description
-}
-
-// GetVideo returns the video file.
-func (r *UploadVideoRequest) GetVideo() *multipart.FileHeader {
-	return r.Video
-}
-
-// GetThumbnail returns the thumbnail file.
-func (r *UploadVideoRequest) GetThumbnail() *multipart.FileHeader {
-	return r.Thumbnail
 }
 
 // DeleteVideoRequest is the request for deleting a video.
