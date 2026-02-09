@@ -16,10 +16,12 @@ import (
 	"open-replays/internal/api/config"
 	sqlite "open-replays/internal/api/db"
 	"open-replays/internal/api/http/router"
+	v1 "open-replays/internal/api/http/v1"
 	"open-replays/internal/api/logger"
 	repodb "open-replays/internal/api/repository/sqlite"
 	"open-replays/internal/api/repository/storage"
 	"open-replays/internal/api/usecase"
+	"open-replays/internal/api/validation"
 )
 
 // Run initializes and starts the API server.
@@ -41,13 +43,6 @@ func Run() error {
 	}
 	slog.SetDefault(log)
 
-	slog.Info("starting server", "address", cfg.Server.Address())
-
-	maxFileSize, err := cfg.Video.MaxFileSizeBytes()
-	if err != nil {
-		return err
-	}
-
 	db, err := sql.Open("sqlite3", cfg.Database.DSN())
 	if err != nil {
 		return err
@@ -62,7 +57,6 @@ func Run() error {
 
 	r := gin.Default()
 	r.Use(cors.Default())
-	// r.Use(middleware.Logger())
 
 	localStorage := storage.NewLocalStorage(cfg.Storage.BaseDir, cfg.Storage.PublicURL)
 	videosRepo := repodb.NewVideosRepo(db)
@@ -73,15 +67,16 @@ func Run() error {
 		localStorage,
 		cfg.Video.WorkerCount,
 	)
-	videosUC := usecase.NewVideosService(
+	videosService := usecase.NewVideosService(
 		videosRepo,
 		localStorage,
 		videoProcessor,
-		maxFileSize,
-		cfg.Video.AllowedExtensions,
 	)
+	videosHandler := v1.NewVideosHandler(videosService, validation.DefaultValidationRules())
 
-	router.Register(r, videosUC)
+	router.Register(r, videosHandler)
 
-	return r.Run(":8080")
+	slog.Info("starting server", "address", cfg.Server.Address())
+
+	return r.Run(cfg.Server.Address())
 }

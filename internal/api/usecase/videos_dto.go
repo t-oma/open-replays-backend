@@ -16,6 +16,7 @@ type UploadParams struct {
 	Thumbnail   *multipart.FileHeader
 	Title       string
 	Description string
+	Ext         string
 }
 
 // DeleteParams is a params for deleting a video.

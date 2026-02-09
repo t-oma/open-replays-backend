@@ -3,10 +3,10 @@ package usecase
 
 import (
 	"context"
-	"fmt"
+	"database/sql"
+	"errors"
 	"log/slog"
 	"mime/multipart"
-	"path/filepath"
 	"sort"
 	"time"
 
@@ -16,11 +16,9 @@ import (
 
 // VideosService is a service for videos.
 type VideosService struct {
-	repo              repoiface.VideosRepository
-	storage           repoiface.StorageService
-	processor         *VideoProcessor
-	maxFileSize       int64
-	allowedExtensions map[string]bool
+	repo      repoiface.VideosRepository
+	storage   repoiface.StorageService
+	processor *VideoProcessor
 }
 
 // NewVideosService creates a new VideosService.
@@ -28,20 +26,11 @@ func NewVideosService(
 	repo repoiface.VideosRepository,
 	storage repoiface.StorageService,
 	processor *VideoProcessor,
-	maxFileSize int64,
-	allowedExtensions []string,
 ) *VideosService {
-	extMap := make(map[string]bool, len(allowedExtensions))
-	for _, ext := range allowedExtensions {
-		extMap[ext] = true
-	}
-
 	return &VideosService{
-		repo:              repo,
-		storage:           storage,
-		processor:         processor,
-		maxFileSize:       maxFileSize,
-		allowedExtensions: extMap,
+		repo:      repo,
+		storage:   storage,
+		processor: processor,
 	}
 }
 
@@ -66,6 +55,9 @@ func (s *VideosService) List(ctx context.Context) ([]domain.Video, error) {
 // GetByID gets a video by ID.
 func (s *VideosService) GetByID(ctx context.Context, params GetByIDParams) (*domain.Video, error) {
 	video, err := s.repo.GetByID(ctx, params.ID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, domain.ErrVideoNotFound
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -76,21 +68,10 @@ func (s *VideosService) GetByID(ctx context.Context, params GetByIDParams) (*dom
 
 // Upload uploads a video.
 func (s *VideosService) Upload(ctx context.Context, params UploadParams) (*domain.Video, error) {
-	ext := filepath.Ext(params.File.Filename)
-	if !s.allowedExtensions[ext] {
-		return nil, domain.ErrInvalidFileType
-	}
-	if params.File.Size > s.maxFileSize {
-		return nil, domain.ErrFileTooLarge
-	}
-	if params.Title == "" {
-		return nil, domain.ErrValidation
-	}
-
 	video := domain.Video{
 		Title:       params.Title,
 		Description: params.Description,
-		Extension:   ext,
+		Extension:   params.Ext,
 		Duration:    0,
 		Views:       0,
 		UploadedAt:  time.Now(),
@@ -98,7 +79,7 @@ func (s *VideosService) Upload(ctx context.Context, params UploadParams) (*domai
 
 	savedVideo, err := s.repo.Create(ctx, video)
 	if err != nil {
-		return nil, fmt.Errorf("create video record: %w", err)
+		return nil, domain.ErrInternal
 	}
 
 	videoKey := savedVideo.GetVideoKey() // "videos/{id}{ext}"
@@ -106,13 +87,13 @@ func (s *VideosService) Upload(ctx context.Context, params UploadParams) (*domai
 	if err = s.storage.Save(ctx, params.File, videoKey); err != nil {
 		// Rollback: delete video record
 		_ = s.repo.Delete(ctx, savedVideo.ID)
-		return nil, fmt.Errorf("save file: %w", err)
+		return nil, domain.ErrInternal
 	}
 
 	if s.shouldGenerateThumbnail(params.Thumbnail) {
 		s.processor.Enqueue(ProcessingJob{
 			VideoID:  savedVideo.ID,
-			VideoExt: ext,
+			VideoExt: params.Ext,
 		})
 		slog.Info("thumbnail generation queued", "video_id", savedVideo.ID)
 	} else {
@@ -134,6 +115,9 @@ func (s *VideosService) Upload(ctx context.Context, params UploadParams) (*domai
 // Delete deletes a video.
 func (s *VideosService) Delete(ctx context.Context, params DeleteParams) error {
 	video, err := s.GetByID(ctx, GetByIDParams(params))
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.ErrVideoNotFound
+	}
 	if err != nil {
 		return err
 	}

@@ -1,3 +1,4 @@
+// Package parse provides utility functions for parsing various data formats.
 package parse
 
 import "fmt"
