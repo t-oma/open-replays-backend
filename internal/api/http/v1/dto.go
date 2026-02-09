@@ -1,22 +1,19 @@
+// Package v1 provides HTTP handlers and DTOs for API version 1.
 package v1
 
 import (
 	"mime/multipart"
 )
 
-type APIResponse struct {
-	Success bool   `json:"success"`
-	Message string `json:"message,omitempty"`
-	Data    any    `json:"data,omitempty"`
-	Error   string `json:"error,omitempty"`
-}
-
+// ListVideosRequest is the request for listing videos.
 type ListVideosRequest struct{}
 
+// GetVideoRequest is the request for getting a video by ID.
 type GetVideoRequest struct {
 	ID string `uri:"id"`
 }
 
+// UploadVideoRequest is the request for uploading a video.
 type UploadVideoRequest struct {
 	Title       string                `form:"title"`
 	Description string                `form:"description"`
@@ -24,14 +21,17 @@ type UploadVideoRequest struct {
 	Thumbnail   *multipart.FileHeader `form:"thumbnail"`
 }
 
+// DeleteVideoRequest is the request for deleting a video.
 type DeleteVideoRequest struct {
 	ID string `uri:"id"`
 }
 
+// WatchVideoRequest is the request for watching a video.
 type WatchVideoRequest struct {
 	ID string `uri:"id"`
 }
 
+// VideoSummaryDTO is a summary representation of a video for list views.
 type VideoSummaryDTO struct {
 	ID           string `json:"id"`
 	Title        string `json:"title"`
@@ -40,6 +40,7 @@ type VideoSummaryDTO struct {
 	UploadedAt   string `json:"uploadedAt"`
 }
 
+// VideoDetailDTO is a detailed representation of a video.
 type VideoDetailDTO struct {
 	ID           string       `json:"id"`
 	Title        string       `json:"title"`
@@ -53,12 +54,14 @@ type VideoDetailDTO struct {
 	Comments     []CommentDTO `json:"comments,omitempty"`
 }
 
+// AuthorDTO represents an author of a video or comment.
 type AuthorDTO struct {
 	ID int64 `json:"id"`
 	// Username  string `json:"username"`
 	// AvatarURL string `json:"avatarUrl,omitempty"`
 }
 
+// CommentDTO represents a comment on a video.
 type CommentDTO struct {
 	ID int64 `json:"id"`
 	// Author    *AuthorDTO
@@ -66,9 +69,20 @@ type CommentDTO struct {
 	// CreatedAt string `json:"createdAt"`
 }
 
+// PaginationDTO represents pagination information.
 type PaginationDTO struct {
 	// Page     int  `json:"page"`
 	// PageSize int  `json:"pageSize"`
 	// Total    int  `json:"total"`
 	// HasNext  bool `json:"hasNext"`
+}
+
+// UploadVideoResponse is the response for uploading a video containing the ID of the uploaded video.
+type UploadVideoResponse struct {
+	ID string `json:"id"`
+}
+
+// DeleteVideoResponse is the response for deleting a video containing the ID of the deleted video.
+type DeleteVideoResponse struct {
+	ID string `json:"id"`
 }
