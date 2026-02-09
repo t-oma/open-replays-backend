@@ -33,6 +33,9 @@ go mod download
 
 # Run the server
 go run ./cmd/api
+
+# Or using Makefile
+make server
 ```
 
 The server will start on `http://localhost:8080`.
@@ -42,28 +45,25 @@ The server will start on `http://localhost:8080`.
 Configuration can be done via:
 
 1. **Config file** (`config.yaml`):
+
 ```yaml
 server:
-  host: "0.0.0.0"
+  host: 0.0.0.0
   port: 8080
-
 database:
-  path: "db.sqlite3"
-
+  path: db.sqlite3
+  busy-timeout: 5s
+  journal-mode: WAL
 storage:
-  base-dir: "uploads"
-  public-url: "http://localhost:8080/media"
-
+  base-dir: uploads
+  public-url: http://localhost:8080/media
 video:
-  max-file-size: "100MB"
-  allowed-extensions: [".mp4", ".mov", ".webm"]
-```
-
-2. **Environment variables**:
-```bash
-export OPEN_REPLAYS_SERVER_PORT=3000
-export OPEN_REPLAYS_DATABASE_PATH=/path/to/db.sqlite3
-export OPEN_REPLAYS_VIDEO_MAX_FILE_SIZE=50MB
+  worker-count: 2
+  max-file-size: 100MB
+  allowed-extensions: [.mp4, .webm, .mov]
+log:
+  level: info
+  format: json
 ```
 
 ## API Endpoints
@@ -101,29 +101,11 @@ The API returns structured error responses:
   "details": [
     {
       "field": "title",
-      "message": "Title is required",
+      "message": "title is required",
       "tag": "required"
     }
   ]
 }
-```
-
-## Project Structure
-
-```
-.
-├── cmd/api/           # Application entry point
-├── internal/
-│   ├── api/
-│   │   ├── config/    # Configuration management
-│   │   ├── domain/    # Domain models and errors
-│   │   ├── http/      # HTTP handlers and validation
-│   │   ├── repository/# Data access layer
-│   │   ├── usecase/   # Business logic
-│   │   └── validation/# Fluent validation API
-│   └── pkg/parse/     # Utility parsers
-├── configs/           # Configuration files
-└── uploads/           # Storage directory
 ```
 
 ## Development
@@ -138,6 +120,9 @@ go build -o api ./cmd/api
 
 ```bash
 go test ./...
+
+# Or using Makefile
+make test
 ```
 
 ### Run Linter
@@ -153,7 +138,3 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Version History
-
-- **v0.1.0** - Initial release with validation API and error handling
