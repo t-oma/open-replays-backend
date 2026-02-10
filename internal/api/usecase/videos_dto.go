@@ -3,7 +3,10 @@ package usecase
 import "mime/multipart"
 
 // ListParams is a params for listing videos.
-type ListParams struct{}
+type ListParams struct {
+	Page     int
+	PageSize int
+}
 
 // GetByIDParams is a params for getting a video by filename.
 type GetByIDParams struct {

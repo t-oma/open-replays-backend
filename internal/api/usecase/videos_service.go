@@ -7,7 +7,6 @@ import (
 	"errors"
 	"log/slog"
 	"mime/multipart"
-	"sort"
 	"time"
 
 	"open-replays/internal/api/domain"
@@ -35,21 +34,33 @@ func NewVideosService(
 }
 
 // List lists all videos.
-func (s *VideosService) List(ctx context.Context) ([]domain.Video, error) {
-	videos, err := s.repo.List(ctx)
+func (s *VideosService) List(ctx context.Context, params ListParams) ([]domain.Video, error) {
+	offset := (params.Page - 1) * params.PageSize
+	limit := params.PageSize
+
+	videos, err := s.repo.List(ctx, limit, offset)
 	if err != nil {
 		return nil, err
 	}
-
-	sort.Slice(videos, func(i, j int) bool {
-		return videos[i].UploadedAt.After(videos[j].UploadedAt)
-	})
 
 	for i := range len(videos) {
 		videos[i].CreateURLs(s.storage.GetURL(""))
 	}
 
 	return videos, nil
+}
+
+// Count returns a count of videos.
+func (s *VideosService) Count(ctx context.Context) (int64, error) {
+	count, err := s.repo.Count(ctx)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, domain.ErrVideoNotFound
+	}
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
 }
 
 // GetByID gets a video by ID.

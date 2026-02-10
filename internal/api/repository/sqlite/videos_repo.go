@@ -27,8 +27,11 @@ func NewVideosRepo(db *sql.DB) *VideosRepo {
 }
 
 // List lists all videos.
-func (r *VideosRepo) List(ctx context.Context) ([]domain.Video, error) {
-	rows, err := r.q.ListVideos(ctx)
+func (r *VideosRepo) List(ctx context.Context, limit, offset int) ([]domain.Video, error) {
+	rows, err := r.q.ListVideos(ctx, sqlc.ListVideosParams{
+		Limit:  int64(limit),
+		Offset: int64(offset),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -47,6 +50,11 @@ func (r *VideosRepo) List(ctx context.Context) ([]domain.Video, error) {
 	}
 
 	return out, nil
+}
+
+// Count returns the total number of videos in the repository.
+func (r *VideosRepo) Count(ctx context.Context) (int64, error) {
+	return r.q.CountVideos(ctx)
 }
 
 // GetByID gets a video by ID.
