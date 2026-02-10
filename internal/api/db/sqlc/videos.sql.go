@@ -10,6 +10,17 @@ import (
 	"time"
 )
 
+const countVideos = `-- name: CountVideos :one
+SELECT COUNT(*) FROM videos
+`
+
+func (q *Queries) CountVideos(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countVideos)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createVideo = `-- name: CreateVideo :one
 INSERT INTO videos (id, title, description, extension, duration, uploaded_at)
 VALUES (?, ?, ?, ?, ?, ?) 
@@ -79,10 +90,17 @@ func (q *Queries) GetVideo(ctx context.Context, id string) (Video, error) {
 
 const listVideos = `-- name: ListVideos :many
 SELECT id, title, description, extension, duration, views, uploaded_at FROM videos
+ORDER BY uploaded_at DESC
+LIMIT ? OFFSET ?
 `
 
-func (q *Queries) ListVideos(ctx context.Context) ([]Video, error) {
-	rows, err := q.db.QueryContext(ctx, listVideos)
+type ListVideosParams struct {
+	Limit  int64
+	Offset int64
+}
+
+func (q *Queries) ListVideos(ctx context.Context, arg ListVideosParams) ([]Video, error) {
+	rows, err := q.db.QueryContext(ctx, listVideos, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
