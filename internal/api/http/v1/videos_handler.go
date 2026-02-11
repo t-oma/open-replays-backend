@@ -32,7 +32,33 @@ func NewVideosHandler(
 
 // List lists all videos.
 func (h *VideosHandler) List(c *gin.Context) {
-	videos, err := h.service.List(c.Request.Context())
+	var req ListVideosRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.BadRequest(c, "invalid request", err.Error())
+		return
+	}
+
+	var errors []response.ValidationError
+
+	errors = append(errors, validation.Int64("page", int64(req.Page)).
+		Min(1).
+		Collect()...)
+
+	errors = append(errors, validation.Int64("pageSize", int64(req.PageSize)).
+		Min(1).
+		Max(100).
+		Collect()...)
+
+	if len(errors) > 0 {
+		response.ValidationFailed(c, errors)
+		return
+	}
+
+	listParams := usecase.ListParams{
+		Page:     req.Page,
+		PageSize: req.PageSize,
+	}
+	videos, err := h.service.List(c.Request.Context(), listParams)
 	if err != nil {
 		response.InternalError(c, err)
 		return
@@ -49,7 +75,21 @@ func (h *VideosHandler) List(c *gin.Context) {
 		}
 	}
 
-	response.OK(c, summaries)
+	totalItems, err := h.service.Count(c.Request.Context())
+	if err != nil {
+		switch {
+		case domain.IsNotFound(err):
+			response.NotFound(c, "videos")
+		default:
+			response.InternalError(c, err)
+		}
+		return
+	}
+
+	response.OK(c, response.PaginatedData[VideoSummaryDTO]{
+		Items:      summaries,
+		Pagination: response.NewPagination(req.Page, req.PageSize, totalItems),
+	})
 }
 
 // GetByID gets a video by ID.

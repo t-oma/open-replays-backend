@@ -25,6 +25,7 @@ func (v *Int64Validator) Min(minSize int64) *Int64Validator {
 			response.IntSizeDetails{
 				MinSize:    minSize,
 				ActualSize: v.base.Value,
+				ExceededBy: minSize - v.base.Value,
 			},
 		)
 	}
@@ -40,6 +41,7 @@ func (v *Int64Validator) Max(maxSize int64) *Int64Validator {
 			response.IntSizeDetails{
 				MaxSize:    maxSize,
 				ActualSize: v.base.Value,
+				ExceededBy: v.base.Value - maxSize,
 			},
 		)
 	}

@@ -1,5 +1,10 @@
 -- name: ListVideos :many
-SELECT * FROM videos;
+SELECT * FROM videos
+ORDER BY uploaded_at DESC
+LIMIT ? OFFSET ?;
+
+-- name: CountVideos :one
+SELECT COUNT(*) FROM videos;
 
 -- name: GetVideo :one
 SELECT * FROM videos 

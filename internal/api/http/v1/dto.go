@@ -6,7 +6,10 @@ import (
 )
 
 // ListVideosRequest is the request for listing videos.
-type ListVideosRequest struct{}
+type ListVideosRequest struct {
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"pageSize,default=10"`
+}
 
 // GetVideoRequest is the request for getting a video by ID.
 type GetVideoRequest struct {
@@ -67,14 +70,6 @@ type CommentDTO struct {
 	// Author    *AuthorDTO
 	// Text      string `json:"text"`
 	// CreatedAt string `json:"createdAt"`
-}
-
-// PaginationDTO represents pagination information.
-type PaginationDTO struct {
-	// Page     int  `json:"page"`
-	// PageSize int  `json:"pageSize"`
-	// Total    int  `json:"total"`
-	// HasNext  bool `json:"hasNext"`
 }
 
 // UploadVideoResponse is the response for uploading a video containing the ID of the uploaded video.

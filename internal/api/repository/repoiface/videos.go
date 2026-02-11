@@ -10,7 +10,9 @@ import (
 // VideosRepository defines the interface for video storage operations.
 type VideosRepository interface {
 	// List returns all videos from the repository.
-	List(ctx context.Context) ([]domain.Video, error)
+	List(ctx context.Context, limit, offset int) ([]domain.Video, error)
+	// Count returns the total number of videos in the repository.
+	Count(ctx context.Context) (int64, error)
 	// GetByID returns a video by its ID.
 	GetByID(ctx context.Context, id string) (*domain.Video, error)
 	// Create creates a new video record in the repository.
