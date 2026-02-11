@@ -38,6 +38,22 @@ func (h *VideosHandler) List(c *gin.Context) {
 		return
 	}
 
+	var errors []response.ValidationError
+
+	errors = append(errors, validation.Int64("page", int64(req.Page)).
+		Min(1).
+		Collect()...)
+
+	errors = append(errors, validation.Int64("pageSize", int64(req.PageSize)).
+		Min(1).
+		Max(100).
+		Collect()...)
+
+	if len(errors) > 0 {
+		response.ValidationFailed(c, errors)
+		return
+	}
+
 	listParams := usecase.ListParams{
 		Page:     req.Page,
 		PageSize: req.PageSize,
